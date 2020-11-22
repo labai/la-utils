@@ -1,4 +1,4 @@
 # la-utils
 
-## deci 
-Decimal class for Kotlin - easier to use operators
+## deci.kt 
+[deci.kt](../../tree/main/deci) - decimal class for Kotlin - easier to use operators
