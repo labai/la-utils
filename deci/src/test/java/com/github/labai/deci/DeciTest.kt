@@ -1,12 +1,11 @@
 package com.github.labai.deci
 
+import com.github.labai.deci.Deci.DeciContext
 import org.jetbrains.annotations.TestOnly
 import java.math.BigDecimal
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import java.math.RoundingMode.DOWN
+import java.math.RoundingMode.HALF_UP
+import kotlin.test.*
 
 /**
  * @author Augustus
@@ -60,7 +59,10 @@ class DeciTest {
         assertDecEquals("0.99179583412", d)
 
         val d2 = (BigDecimal.ONE - BigDecimal.ONE / BigDecimal(365)) * (BigDecimal.ONE - BigDecimal(2) / BigDecimal(365))
-        assertDecEquals("1", d2) // WRONG! original BigDecimal
+        assertDecEquals("1", d2) // WRONG with original BigDecimal!
+
+        val d3 = 1.deci / Deci("1.23e10") * Deci("2.34e-10") * BigDecimal("1e20") round 11
+        assertDecEquals("1.90243902439", d3)
     }
 
 
@@ -69,7 +71,6 @@ class DeciTest {
         assertDecEquals("1.11", Deci("1.114").round(2))
         assertDecEquals("1.12", Deci("1.115") round 2)
         assertEquals(BigDecimal("1.11000"), Deci("1.11") .round(5).toBigDecimal())
-
     }
 
     @Test
@@ -135,9 +136,11 @@ class DeciTest {
     fun test_hashcode() {
         val list = (0..5).map { Deci("${it}.${it}000") }
         val map = list.map { it to it * 10 }.toMap()
-
         // searching in map uses hashcode
         assertEquals(22.deci, map[Deci("2.2")])
+        // should be cached
+        val d = 22.deci
+        assertTrue(d.hashCode() === d.hashCode())
     }
 
     @Test
@@ -146,19 +149,93 @@ class DeciTest {
 
         val d2: Deci? = try {
             Deci("12.2") / d1
+            throw IllegalStateException("Expected div/0")
         } catch (e: Exception) {
             null
         }
         assertNull(d2)
-
     }
 
-    class Demo1(val quantity: Deci, val price: Deci, val fee: Deci) {
-        fun getPercent1(): Deci = (price * quantity - fee) * 100 / (price * quantity) round 2
+    @Test
+    fun test_deciContext() {
+        // should keep first operator DeciContext
+
+        val d1 = Deci(BigDecimal("1.2"), DeciContext(55))
+        val d2 = d1 / 7.deci
+        assertEquals(55, d2.toBigDecimal().scale())
+
+        val d3 = Deci(BigDecimal("1.192"), DeciContext(1, DOWN, 1))
+        assertDecEquals("1.1", d3) // rounded down
+    }
+
+
+    @Test
+    fun test_scale() {
+
+        val ctx4 = DeciContext(4, HALF_UP, 3)
+        fun checkScale(expected: Int, num: String) {
+            assertEquals(expected, Deci(BigDecimal(num), ctx4).toBigDecimal().scale())
+            assertEquals(expected, Deci(BigDecimal("-$num"), ctx4).toBigDecimal().scale()) // check with negative value also
+        }
+
+        checkScale(0, "1.1e+5")
+        checkScale(4, "123.123456")
+        checkScale(2, "1.12")
+        checkScale(2, "0.12")
+        checkScale(3, "0.120") // trailing zeros are not ignored
+        checkScale(3, "0.123")
+        checkScale(4, "0.1234")
+        checkScale(4, "0.01234")
+        checkScale(5, "0.001234")
+        checkScale(6, "0.0001234")
+        checkScale(7, "0.0000001")
+        checkScale(8, "0.00000010")
+        checkScale(6, "1.1e-5")
+        checkScale(0, "0")
+        checkScale(0, "0.0") // zero is zero (ignore trailing zeros for 0)
+        checkScale(0, "0.000000")
+        checkScale(0, "10")
+    }
+
+    @Test
+    fun test_divScale() {
+        val ctx4 = DeciContext(4, HALF_UP, 3)
+        fun checkDivScale(expected: Int, num: String, divisor: String) {
+            assertEquals(expected, Deci(BigDecimal(num), ctx4).calcDivScale(BigDecimal(divisor)))
+            assertEquals(expected, Deci(BigDecimal("-$num"), ctx4).calcDivScale(BigDecimal(divisor))) // check with negative value also
+            assertEquals(expected, Deci(BigDecimal(num), ctx4).calcDivScale(BigDecimal("-$divisor")))
+            assertEquals(expected, Deci(BigDecimal("-$num"), ctx4).calcDivScale(BigDecimal("-$divisor")))
+        }
+
+        checkDivScale(4, "10.1", "12.2")
+        checkDivScale(4, "100", "11")
+        checkDivScale(5, "10.1", "1000") // 0.01010
+        checkDivScale(5, "10.1", "9999") // 0.00101
+        checkDivScale(6, "11", "10000") // 0.00110
+        checkDivScale(6, "11", "99999") // 0.000110
+        checkDivScale(7, "0.011", "100") // 0.0001100
+        checkDivScale(7, "0.011", "999") // 0.0000110
+        checkDivScale(5, "1", "100") // ?
+        checkDivScale(5, "0", "999") //
+
+        checkDivScale(4, "0.011", "0.01")       // 1.1000
+        checkDivScale(7, "0.0000110", "0.01")   // 0.001100 (left original scale)
+        checkDivScale(7, "0.0000110", "0.09")   // 0.000122 (left original scale)
+        checkDivScale(5, "0.00011", "0.01")     // 0.01100
+        checkDivScale(5, "0.00011", "0.0999")   // 0.00110
+    }
+
+    @Test
+    fun test_sumOf() {
+        val list = listOf(Deci("1.2"), 1.deci)
+        assertDecEquals("2.2", list.sumOf { it })
     }
 
     @Test
     fun test_demo1() {
+        class Demo1(val quantity: Deci, val price: Deci, val fee: Deci) {
+            fun getPercent1(): Deci = (price * quantity - fee) * 100 / (price * quantity) round 2
+        }
         val demo = Demo1(Deci("12.2"), Deci("55.97"), Deci("15.5"))
 
         val res2: BigDecimal = (demo.price * demo.quantity - demo.fee) * 100 / (demo.price * demo.quantity) bigd 8

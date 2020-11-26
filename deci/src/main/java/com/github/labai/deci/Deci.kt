@@ -1,8 +1,11 @@
 package com.github.labai.deci
 
 import com.github.labai.deci.Deci.Companion
+import java.lang.Integer.min
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.math.RoundingMode.HALF_UP
+import kotlin.math.max
 
 /*
  * @author Augustus
@@ -15,6 +18,7 @@ import java.math.RoundingMode.HALF_UP
  *  - math operators with BigDecimal, Int, Long
  *  - null support
  *  - equal ('==') ignores scale (uses compareTo)
+ *  - scale and rounding mode can be set on first element of formula
  *
  * E.g.
  *  val d1: Deci = (price * quantity - fee) * 100 / (price * quantity) round 2
@@ -26,32 +30,47 @@ import java.math.RoundingMode.HALF_UP
  *   eq - comparison between numbers (various types, including null)
  *
  */
-class Deci(decimal: BigDecimal) : Number(), Comparable<Deci> {
+class Deci(decimal: BigDecimal, private val context: DeciContext = defaultDeciContext) : Number(), Comparable<Deci> {
 
     constructor(str: String) : this(BigDecimal(str))
     constructor(int: Int) : this(BigDecimal(int))
     constructor(long: Long) : this(BigDecimal(long))
 
+    class DeciContext(val scale: Int, val roundingMode: RoundingMode, val precision: Int) {
+        constructor(scale: Int, roundingMode: RoundingMode = HALF_UP) : this(scale, roundingMode, scale)
+        init {
+            check(scale >= 0) { "scale must be >= 0 (is $scale)"}
+            check(scale <= 2000) { "scale must be <= 2000 (is $scale)"}
+            check(precision >= 1) { "precision must be >= 1 (is $precision)"}
+            check(precision <= 2000) { "precision must be <= 2000 (is $precision)"}
+        }
+    }
+
     private val decimal: BigDecimal = when {
-        decimal.scale() < 0 -> decimal.setScale(0, HALF_UP)
-        decimal.scale() > maxScale -> decimal.setScale(maxScale, HALF_UP)
+        decimal.signum() == 0 -> BigDecimal.ZERO
+        decimal.scale() < 0 -> decimal.setScale(0, context.roundingMode)
+        decimal.scale() > context.scale -> {
+            val zeros = max(0, decimal.scale() - decimal.precision())
+            val scale = max(context.scale, min(zeros + context.precision, decimal.scale()))
+            decimal.setScale(scale, context.roundingMode)
+        }
         else -> decimal
     }
     private var _hashCode: Int? = null
 
-    operator fun unaryMinus(): Deci = Deci(decimal.negate())
+    operator fun unaryMinus(): Deci = Deci(decimal.negate(), context)
 
-    operator fun plus(other: BigDecimal): Deci = Deci(decimal.add(other))
-    operator fun minus(other: BigDecimal): Deci = Deci(decimal.subtract(other))
-    operator fun times(other: BigDecimal): Deci = Deci(decimal.multiply(other))
-    operator fun div(other: BigDecimal): Deci = Deci(decimal.divide(other, maxScale, HALF_UP))
-    operator fun rem(other: BigDecimal): Deci = Deci(decimal.remainder(other))
+    operator fun plus(other: BigDecimal): Deci = Deci(decimal.add(other), context)
+    operator fun minus(other: BigDecimal): Deci = Deci(decimal.subtract(other), context)
+    operator fun times(other: BigDecimal): Deci = Deci(decimal.multiply(other), context)
+    operator fun div(other: BigDecimal): Deci = Deci(decimal.divide(other, calcDivScale(other), context.roundingMode), context)
+    operator fun rem(other: BigDecimal): Deci = Deci(decimal.remainder(other), context)
 
-    operator fun plus(other: Deci): Deci = Deci(decimal.add(other.decimal))
-    operator fun minus(other: Deci): Deci = Deci(decimal.subtract(other.decimal))
-    operator fun times(other: Deci): Deci = Deci(decimal.multiply(other.decimal))
-    operator fun div(other: Deci): Deci = Deci(decimal.divide(other.decimal, maxScale, HALF_UP))
-    operator fun rem(other: Deci): Deci = Deci(decimal.remainder(other.decimal))
+    operator fun plus(other: Deci): Deci = plus(other.decimal)
+    operator fun minus(other: Deci): Deci = minus(other.decimal)
+    operator fun times(other: Deci): Deci = times(other.decimal)
+    operator fun div(other: Deci): Deci = div(other.decimal)
+    operator fun rem(other: Deci): Deci = rem(other.decimal)
 
     inline operator fun plus(other: Int): Deci = plus(BigDecimal(other))
     inline operator fun minus(other: Int): Deci = minus(BigDecimal(other))
@@ -76,10 +95,10 @@ class Deci(decimal: BigDecimal) : Number(), Comparable<Deci> {
     fun toBigDecimal(): BigDecimal = decimal
 
     /** round to n decimals and convert to BigDecimal */
-    infix fun bigd(scale: Int): BigDecimal = this.decimal.setScale(scale, HALF_UP)
+    infix fun bigd(scale: Int): BigDecimal = this.decimal.setScale(scale, context.roundingMode)
 
     /** rounds to n decimals. Unlike BigDecimal.round(), here parameter 'scale' means scale, not precision */
-    infix fun round(scale: Int): Deci = Deci(this.decimal.setScale(scale, HALF_UP))
+    infix fun round(scale: Int): Deci = Deci(this.decimal.setScale(scale, context.roundingMode))
 
     override fun compareTo(other: Deci): Int = decimal.compareTo(other.decimal)
 
@@ -98,8 +117,16 @@ class Deci(decimal: BigDecimal) : Number(), Comparable<Deci> {
         return _hashCode!!
     }
 
+    internal fun calcDivScale(divisor: BigDecimal): Int {
+        val thisIntDigits = if (decimal.signum() == 0) 1 else decimal.precision() - decimal.scale()
+        val divisorIntDigits = if (divisor.signum() == 0) 1 else divisor.precision() - divisor.scale()
+        if (divisorIntDigits < 0)
+            return max(decimal.scale(), context.scale) // dividing will increase result
+        return max(context.scale, context.precision + divisorIntDigits - thisIntDigits)
+    }
+
     companion object {
-        private const val maxScale = 30
+        private val defaultDeciContext = DeciContext(20, HALF_UP, 20)
 
         private val d0 = Deci(0)
         private val d1 = Deci(1)
@@ -212,4 +239,16 @@ operator fun Deci.compareTo(other: Number): Int {
         is Byte -> compareTo(BigDecimal(other.toInt()).deci)
         else -> this.compareTo(Deci(other.toString()))
     }
+}
+
+//
+// Iterable extensions
+//
+@kotlin.jvm.JvmName("sumOfDeci")
+inline fun <T> Iterable<T>.sumOf(selector: (T) -> Deci): Deci {
+    var sum: Deci = 0.deci
+    for (element in this) {
+        sum += selector(element)
+    }
+    return sum
 }

@@ -22,7 +22,7 @@ To solve these problems the *Deci* class can be used.
 Idea is to create simple BigDecimal wrapper, 
 which behaves slightly differently:
 - use HALF_UP rounding
-- division result with high scale (30)
+- division result with high scale
 - additional math operators with BigDecimal, Int, Long
 - null support
 - equal ('==') ignores scale
