@@ -24,8 +24,8 @@ which behaves slightly differently:
 - use HALF_UP rounding
 - division result with high scale
 - additional math operators with BigDecimal, Int, Long
-- null support
 - equal ('==') ignores scale
+- ~~null support~~
 
 Few additional functions:
 - round - round number by provided count of decimal places, return Deci
