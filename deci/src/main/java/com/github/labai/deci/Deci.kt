@@ -21,24 +21,21 @@ import kotlin.math.max
  *
  * E.g.
  *  val d1: Deci = (price * quantity - fee) * 100 / (price * quantity) round 2
- *  val d2: BigDecimal = (1.deci - 1.deci / 365) * (1.deci - 2.deci / 365) bigd 11
+ *  val d2: BigDecimal = ((1.deci - 1.deci / 365) * (1.deci - 2.deci / 365) round 11).toBigDecimal()
  *
  * Additional infix functions
  *   round - round number by provided number of decimal, return Deci
- *   bigd - round and convert to BigDecimal
  *   eq - comparison between numbers (various types, including null)
  *
  */
-class Deci (decimal: BigDecimal, private val context: DeciContext) : Number(), Comparable<Deci> {
+class Deci(decimal: BigDecimal, private val context: DeciContext = defaultDeciContext) : Number(), Comparable<Deci> {
 
-    constructor(decimal: BigDecimal) : this(decimal, defaultDeciContext)
     constructor(str: String) : this(BigDecimal(str))
     constructor(int: Int) : this(BigDecimal(int))
     constructor(long: Long) : this(BigDecimal(long))
 
     class DeciContext(val scale: Int, val roundingMode: RoundingMode, val precision: Int) {
-        constructor(scale: Int, roundingMode: RoundingMode) : this(scale, roundingMode, scale)
-        constructor(scale: Int) : this(scale, HALF_UP, scale)
+        constructor(scale: Int, roundingMode: RoundingMode = HALF_UP) : this(scale, roundingMode, scale)
         init {
             check(scale >= 0) { "scale must be >= 0 (is $scale)" }
             check(scale <= 2000) { "scale must be <= 2000 (is $scale)" }
@@ -53,10 +50,7 @@ class Deci (decimal: BigDecimal, private val context: DeciContext) : Number(), C
         decimal.scale() > context.scale -> {
             val zeros = max(0, decimal.scale() - decimal.precision())
             val scale = max(context.scale, min(zeros + context.precision, decimal.scale()))
-            if (scale >= decimal.scale())
-                decimal // nothing to change
-            else
-                decimal.setScale(scale, context.roundingMode)
+            decimal.setScale(scale, context.roundingMode)
         }
         else -> decimal
     }
@@ -98,15 +92,19 @@ class Deci (decimal: BigDecimal, private val context: DeciContext) : Number(), C
 
     fun toBigDecimal(): BigDecimal = decimal
 
-    /** round to n decimals and convert to BigDecimal */
-    infix fun bigd(scale: Int): BigDecimal = this.decimal.setScale(scale, context.roundingMode)
-
     /** round to n decimals. Unlike BigDecimal.round(), here parameter 'scale' means scale, not precision */
     infix fun round(scale: Int): Deci = Deci(this.decimal.setScale(scale, context.roundingMode))
 
     override fun compareTo(other: Deci): Int = decimal.compareTo(other.decimal)
 
-    override fun toString(): String = decimal.toString()
+    override fun toString(): String {
+        if (decimal.scale() == 0)
+            return decimal.toString()
+        var d = decimal.stripTrailingZeros()
+        if (d.scale() < 0)
+            d = d.setScale(0)
+        return d.toString()
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -145,7 +143,6 @@ class Deci (decimal: BigDecimal, private val context: DeciContext) : Number(), C
     }
 }
 
-infix fun Deci?.bigd(scale: Int): BigDecimal? = this?.bigd(scale)
 infix fun Deci?.round(scale: Int): Deci? = this?.round(scale)
 infix fun Deci?.eq(other: Deci?): Boolean = if (this == null || other == null) this == other else this.compareTo(other) == 0
 infix fun Deci?.eq(other: BigDecimal?): Boolean = if (this == null || other == null) (this == null && other == null) else this.toBigDecimal().compareTo(other) == 0

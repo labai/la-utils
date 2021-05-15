@@ -1,7 +1,6 @@
 package com.github.labai.deci
 
 import com.github.labai.deci.Deci.DeciContext
-import org.jetbrains.annotations.TestOnly
 import java.math.BigDecimal
 import java.math.RoundingMode.DOWN
 import java.math.RoundingMode.HALF_UP
@@ -13,7 +12,7 @@ import kotlin.test.*
  */
 class DeciTest {
 
-    @TestOnly
+    @Test
     fun test_equals() {
         // eq
         assertTrue(Deci(BigDecimal("12.2")) eq BigDecimal("12.2"))
@@ -75,23 +74,20 @@ class DeciTest {
 
     @Test
     fun test_toBigDecimal() {
-        assertEquals(BigDecimal("1.11"), Deci("1.11") bigd 2)
-        assertEquals(BigDecimal("1.1100"), Deci("1.11") bigd 4)
+        assertEquals(BigDecimal("1.11"), (Deci("1.11") round 2).toBigDecimal())
+        assertEquals(BigDecimal("1.1100"), (Deci("1.11") round 4).toBigDecimal())
         assertDecEquals("1.12", Deci("1.115") round 2)
     }
 
 
+/*
     @Test
     fun test_nulls() {
-        /*
         val d1: Deci? = null
         val d2: Deci? = Deci("12.2") + d1
         assertNull(d2)
 
         val d3 = Deci("12.2") / 12 * d1 ?: 0.deci
-        assertEquals(0.deci, d3)
-
-        val d5 = (Deci("12.2") as Deci?) * d1 ?: 0.deci
         assertEquals(0.deci, d3)
 
         val int1: Int? = null
@@ -108,8 +104,9 @@ class DeciTest {
         val bd1: BigDecimal? = null
         assertTrue(d4 eq bd1)
         assertFalse(d4 eq BigDecimal.ONE)
-        */
+
     }
+*/
 
     @Test
     fun test_valueOf() {
@@ -175,11 +172,14 @@ class DeciTest {
 
     @Test
     fun test_scale() {
-
-        val ctx4 = DeciContext(4, HALF_UP, 3)
-        fun checkScale(expected: Int, num: String) {
-            assertEquals(expected, Deci(BigDecimal(num), ctx4).toBigDecimal().scale())
-            assertEquals(expected, Deci(BigDecimal("-$num"), ctx4).toBigDecimal().scale()) // check with negative value also
+        // (ctx4) should keep scale
+        //  - if provided < 4 - then use provided scale
+        //  - use 4 - if provided scale is bigger
+        //      - but keep minimum precision 3 (minimum non zero digits)
+        val ctx4 = DeciContext(scale = 4, roundingMode = HALF_UP, precision = 3)
+        fun checkScale(expectedScale: Int, num: String) {
+            assertEquals(expectedScale, Deci(BigDecimal(num), ctx4).toBigDecimal().scale())
+            assertEquals(expectedScale, Deci(BigDecimal("-$num"), ctx4).toBigDecimal().scale()) // check with negative value also
         }
 
         checkScale(0, "1.1e+5")
@@ -203,12 +203,12 @@ class DeciTest {
 
     @Test
     fun test_divScale() {
-        val ctx4 = DeciContext(4, HALF_UP, 3)
-        fun checkDivScale(expected: Int, num: String, divisor: String) {
-            assertEquals(expected, Deci(BigDecimal(num), ctx4).calcDivScale(BigDecimal(divisor)))
-            assertEquals(expected, Deci(BigDecimal("-$num"), ctx4).calcDivScale(BigDecimal(divisor))) // check with negative value also
-            assertEquals(expected, Deci(BigDecimal(num), ctx4).calcDivScale(BigDecimal("-$divisor")))
-            assertEquals(expected, Deci(BigDecimal("-$num"), ctx4).calcDivScale(BigDecimal("-$divisor")))
+        val ctx4 = DeciContext(scale = 4, roundingMode = HALF_UP, precision = 3)
+        fun checkDivScale(expectedScale: Int, num: String, divisor: String) {
+            assertEquals(expectedScale, Deci(BigDecimal(num), ctx4).calcDivScale(BigDecimal(divisor)))
+            assertEquals(expectedScale, Deci(BigDecimal("-$num"), ctx4).calcDivScale(BigDecimal(divisor))) // check with negative value also
+            assertEquals(expectedScale, Deci(BigDecimal(num), ctx4).calcDivScale(BigDecimal("-$divisor")))
+            assertEquals(expectedScale, Deci(BigDecimal("-$num"), ctx4).calcDivScale(BigDecimal("-$divisor")))
         }
 
         checkDivScale(4, "10.1", "12.2")
@@ -230,9 +230,24 @@ class DeciTest {
     }
 
     @Test
+    fun test_round_precedence() {
+        // round should be on result after all operators executed, not for last argument
+        assertDecEquals(Deci("1.2"), (Deci("1.16") - (Deci("0.02") round 1) round 1)) // when rounded last argument
+        assertDecEquals(Deci("1.1"), Deci("1.16") - Deci("0.02") round 1) // when rounded result
+    }
+
+    @Test
     fun test_sumOf() {
         val list = listOf(Deci("1.2"), 1.deci)
         assertDecEquals("2.2", list.sumOf { it })
+    }
+
+    @Test
+    fun test_toString() {
+        assertEquals("-12.02", Deci("-12.0200").toString())
+        assertEquals("12", Deci("12.0000").toString())
+        assertEquals("1200", Deci("1200.0000").toString())
+        assertEquals("1200000", Deci("12e5").toString())
     }
 
     @Test
@@ -242,7 +257,7 @@ class DeciTest {
         }
         val demo = Demo1(Deci("12.2"), Deci("55.97"), Deci("15.5"))
 
-        val res2: BigDecimal = (demo.price * demo.quantity - demo.fee) * 100 / (demo.price * demo.quantity) bigd 8
+        val res2: BigDecimal = ((demo.price * demo.quantity - demo.fee) * 100 / (demo.price * demo.quantity) round 8).toBigDecimal()
 
         assertDecEquals("97.73004859", res2)
         assertDecEquals("97.73", demo.getPercent1())
@@ -262,4 +277,3 @@ class DeciTest {
         return this.compareTo(other) == 0
     }
 }
-
