@@ -1,6 +1,5 @@
 package com.github.labai.deci
 
-import com.github.labai.deci.Deci.Companion
 import java.lang.Integer.min
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -11,6 +10,8 @@ import kotlin.math.max
  * @author Augustus
  *   com.github.labai
  *   created on 2020.11.18
+ *
+ * Latest version https://github.com/labai/la-utils/tree/main/deci
  *
  * wrapped BigDecimal with features:
  *  - use HALF_UP rounding
@@ -134,18 +135,18 @@ class Deci(decimal: BigDecimal, private val context: DeciContext = defaultDeciCo
         private val d1 = Deci(1)
 
         fun valueOf(int: Int): Deci {
-            return when(int) { 0 -> d0; 1 -> d1; else -> Deci(int) }
+            return when (int) { 0 -> d0; 1 -> d1; else -> Deci(int) }
         }
 
         fun valueOf(long: Long): Deci {
-            return when(long) { 0L -> d0; 1L -> d1; else -> Deci(long) }
+            return when (long) { 0L -> d0; 1L -> d1; else -> Deci(long) }
         }
     }
 }
 
 infix fun Deci?.round(scale: Int): Deci? = this?.round(scale)
 infix fun Deci?.eq(other: Deci?): Boolean = if (this == null || other == null) this == other else this.compareTo(other) == 0
-infix fun Deci?.eq(other: BigDecimal?): Boolean = if (this == null || other == null) (this == null && other == null) else this.toBigDecimal().compareTo(other) == 0
+infix fun Deci?.eq(other: BigDecimal?): Boolean = if (this == null || other == null) (this == null && other == null) else toBigDecimal().compareTo(other) == 0
 infix fun Deci?.eq(other: Number?): Boolean = if (this == null || other == null) (this == null && other == null) else this.compareTo(other) == 0
 
 fun Deci?.toBigDecimal(): BigDecimal? = this?.toBigDecimal()
@@ -173,8 +174,9 @@ val Long.deci: Deci
 //
 // additional Deci methods
 //
-fun Companion.valueOf(number: Number): Deci {
-    return when(number) {
+@Suppress("USELESS_CAST")
+fun Deci.Companion.valueOf(number: Number): Deci {
+    return when (number) {
         is Deci -> number
         is BigDecimal -> Deci(number)
         is Int -> valueOf(number as Int)
@@ -187,8 +189,9 @@ fun Companion.valueOf(number: Number): Deci {
     }
 }
 
+@Suppress("USELESS_CAST")
 operator fun Deci.compareTo(other: Number): Int {
-    return when(other) {
+    return when (other) {
         is Deci -> compareTo(other as Deci)
         is BigDecimal -> compareTo(other.deci)
         is Int -> compareTo(other.deci)

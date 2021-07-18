@@ -69,7 +69,7 @@ class DeciTest {
     fun test_rounding() {
         assertDecEquals("1.11", Deci("1.114").round(2))
         assertDecEquals("1.12", Deci("1.115") round 2)
-        assertEquals(BigDecimal("1.11000"), Deci("1.11") .round(5).toBigDecimal())
+        assertEquals(BigDecimal("1.11000"), Deci("1.11").round(5).toBigDecimal())
     }
 
     @Test
@@ -135,7 +135,7 @@ class DeciTest {
 
     @Test
     fun test_hashcode() {
-        val list = (0..5).map { Deci("${it}.${it}000") }
+        val list = (0..5).map { Deci("$it.${it}000") }
         val map = list.map { it to it * 10 }.toMap()
         // searching in map uses hashcode
         assertEquals(22.deci, map[Deci("2.2")])
@@ -222,11 +222,11 @@ class DeciTest {
         checkDivScale(5, "1", "100") // ?
         checkDivScale(5, "0", "999") //
 
-        checkDivScale(4, "0.011", "0.01")       // 1.1000
-        checkDivScale(7, "0.0000110", "0.01")   // 0.001100 (left original scale)
-        checkDivScale(7, "0.0000110", "0.09")   // 0.000122 (left original scale)
-        checkDivScale(5, "0.00011", "0.01")     // 0.01100
-        checkDivScale(5, "0.00011", "0.0999")   // 0.00110
+        checkDivScale(4, "0.011", "0.01") // 1.1000
+        checkDivScale(7, "0.0000110", "0.01") // 0.001100 (left original scale)
+        checkDivScale(7, "0.0000110", "0.09") // 0.000122 (left original scale)
+        checkDivScale(5, "0.00011", "0.01") // 0.01100
+        checkDivScale(5, "0.00011", "0.0999") // 0.00110
     }
 
     @Test
@@ -255,6 +255,7 @@ class DeciTest {
         class Demo1(val quantity: Deci, val price: Deci, val fee: Deci) {
             fun getPercent1(): Deci = (price * quantity - fee) * 100 / (price * quantity) round 2
         }
+
         val demo = Demo1(Deci("12.2"), Deci("55.97"), Deci("15.5"))
 
         val res2: BigDecimal = ((demo.price * demo.quantity - demo.fee) * 100 / (demo.price * demo.quantity) round 8).toBigDecimal()
