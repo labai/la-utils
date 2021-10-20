@@ -40,4 +40,12 @@ val d2: BigDecimal = ((1.deci - 1.deci / 365) * (1.deci - 2.deci / 365) round 11
 ```
 
 #### Usage
-Deci is in experimental stage, but you can copy and try Deci.kt in your project
+Use maven dependency:
+
+```xml
+<dependency>
+    <groupId>com.github.labai</groupId>
+    <artifactId>deci</artifactId>
+    <version>0.0.1</version>
+</dependency>
+```

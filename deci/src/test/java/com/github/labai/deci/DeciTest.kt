@@ -4,7 +4,11 @@ import com.github.labai.deci.Deci.DeciContext
 import java.math.BigDecimal
 import java.math.RoundingMode.DOWN
 import java.math.RoundingMode.HALF_UP
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * @author Augustus
@@ -43,7 +47,6 @@ class DeciTest {
         assertDecEquals("-1.1", -Deci("1.1"))
     }
 
-
     @Test
     fun test_division_simple() {
         assertDecEquals("1", 2.deci / 2)
@@ -64,7 +67,6 @@ class DeciTest {
         assertDecEquals("1.90243902439", d3)
     }
 
-
     @Test
     fun test_rounding() {
         assertDecEquals("1.11", Deci("1.114").round(2))
@@ -78,7 +80,6 @@ class DeciTest {
         assertEquals(BigDecimal("1.1100"), (Deci("1.11") round 4).toBigDecimal())
         assertDecEquals("1.12", Deci("1.115") round 2)
     }
-
 
 /*
     @Test
@@ -107,7 +108,6 @@ class DeciTest {
 
     }
 */
-
     @Test
     fun test_valueOf() {
         assertEquals(2.deci, Deci.valueOf(2.toByte()))
@@ -168,7 +168,6 @@ class DeciTest {
         val d3 = Deci(BigDecimal("1.192"), DeciContext(1, DOWN, 1))
         assertDecEquals("1.1", d3) // rounded down
     }
-
 
     @Test
     fun test_scale() {
@@ -263,7 +262,6 @@ class DeciTest {
         assertDecEquals("97.73004859", res2)
         assertDecEquals("97.73", demo.getPercent1())
     }
-
 
     private fun assertDecEquals(dec1: BigDecimal, dec2: BigDecimal) = assertTrue(dec1 eq dec2, "Decimals are not equal ($dec1 vs $dec2)")
     private fun assertDecEquals(dec1: Deci, dec2: BigDecimal) = assertTrue(dec1 eq dec2, "Decimals are not equal ($dec1 vs $dec2)")

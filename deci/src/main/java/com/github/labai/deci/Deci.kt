@@ -29,7 +29,8 @@ import kotlin.math.max
  *   eq - comparison between numbers (various types, including null)
  *
  */
-class Deci(decimal: BigDecimal, private val context: DeciContext = defaultDeciContext) : Number(), Comparable<Deci> {
+
+class Deci @JvmOverloads constructor(decimal: BigDecimal, private val context: DeciContext = defaultDeciContext) : Number(), Comparable<Deci> {
 
     constructor(str: String) : this(BigDecimal(str))
     constructor(int: Int) : this(BigDecimal(int))
