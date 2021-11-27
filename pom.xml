@@ -16,8 +16,6 @@
     </properties>
 
     <modules>
-        <module>deci</module>
-        <module>deci-conv-all</module>
     </modules>
 
 </project>
