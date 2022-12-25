@@ -15,7 +15,6 @@ class LaMapperExtTest {
 
     @Test
     fun test_deci() {
-
         data class T01From(val v1: Int, val v2: BigDecimal) {
             var a20: Deci? = null
         }

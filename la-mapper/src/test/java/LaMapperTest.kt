@@ -19,15 +19,14 @@ class LaMapperTest {
 
     @Test
     fun test_constructor_to_constructor() {
-
         data class From(
             val v1: Int,
-            val v2: BigDecimal
+            val v2: BigDecimal,
         )
 
         class To(
             val v1: BigDecimal,
-            val v2: BigDecimal
+            val v2: BigDecimal,
         )
 
         val mapper = LaMapper.autoMapper<From, To>()
@@ -47,7 +46,6 @@ class LaMapperTest {
 
     @Test
     fun test_fields_assign() {
-
         class From {
             var a20: Int? = null
             var a30: LocalDate? = null
@@ -73,7 +71,6 @@ class LaMapperTest {
 
     @Test
     fun test_mixed_assign() {
-
         class From(val v1: Int, val v2: BigDecimal) {
             var v3: Int? = null
             var v4: LocalDate? = null
@@ -105,7 +102,6 @@ class LaMapperTest {
 
     @Test
     fun test_mappings_property_mapping() {
-
         class From {
             var v11: Int? = null
             var v12: Long? = null
@@ -137,10 +133,9 @@ class LaMapperTest {
 
     @Test
     fun test_mappings_nulls_auto() {
-
         class From(
             val v01: Int? = null,
-            val v02: Long? = null
+            val v02: Long? = null,
         ) {
             var v11: Int? = null
             var v12: Long? = null
@@ -168,10 +163,9 @@ class LaMapperTest {
 
     @Test
     fun test_mappings_nulls_manual() {
-
         class From(
             var v01: Int? = null,
-            var v02: Long? = null
+            var v02: Long? = null,
         ) {
             var v11: Int? = null
             var v12: Long? = null
@@ -291,6 +285,86 @@ class LaMapperTest {
             val mapper = LaMapper.autoMapper<TestPojo, Test2PojoConstr>()
             mapper.transform(from)
         }
+    }
+
+    @JvmInline
+    value class Age(val value: Int) {
+        override fun toString() = "Age($value)"
+    }
+
+    @JvmInline
+    value class AgeS(val age: String) {
+        override fun toString() = "AgeS($age)"
+    }
+
+    @JvmInline
+    value class AgeX(val age: Long) {
+        override fun toString() = "AgeX($age)"
+    }
+
+    @Test
+    fun test_mappings_value_class_value_to_primitive_arg() {
+        class FrDto(val age: Age)
+        class ToDto(val age: Long)
+
+        val from = FrDto(Age(10))
+        val mapper = LaMapper.autoMapper<FrDto, ToDto>()
+        val res = mapper.transform(from)
+        assertEquals(10, res.age)
+
+        val mapper2 = LaMapper.autoMapper<ToDto, FrDto>()
+        val res2 = mapper2.transform(res)
+        assertEquals(Age(10), res2.age)
+    }
+
+    @Test
+    fun test_mappings_value_class_value_to_primitive_prop() {
+        class FrDto {
+            var age: Age? = null
+        }
+
+        class ToDto {
+            var age: Long? = null
+        }
+
+        val from = FrDto().apply { age = Age(10) }
+        val mapper = LaMapper.autoMapper<FrDto, ToDto>()
+        val res = mapper.transform(from)
+        assertEquals(10, res.age)
+
+        val mapper2 = LaMapper.autoMapper<ToDto, FrDto>()
+        val res2 = mapper2.transform(res)
+        assertEquals(Age(10), res2.age)
+    }
+
+    @Test
+    fun test_mappings_value_class_value_to_value_string() {
+        class FrDto(val age: Age)
+        class ToDto(val age: AgeS)
+
+        val from = FrDto(age = Age(10))
+        val mapper = LaMapper.autoMapper<FrDto, ToDto>()
+        val res = mapper.transform(from)
+        assertEquals(AgeS("10"), res.age)
+
+        val mapper2 = LaMapper.autoMapper<ToDto, FrDto>()
+        val res2 = mapper2.transform(res)
+        assertEquals(Age(10), res2.age)
+    }
+
+    @Test
+    fun test_mappings_value_class_value_to_value() {
+        class FrDto(val age: Age)
+        class ToDto(val age: AgeX)
+
+        val from = FrDto(age = Age(10))
+        val mapper = LaMapper.autoMapper<FrDto, ToDto>()
+        val res = mapper.transform(from)
+        assertEquals(AgeX(10), res.age)
+
+        val mapper2 = LaMapper.autoMapper<ToDto, FrDto>()
+        val res2 = mapper2.transform(res)
+        assertEquals(Age(10), res2.age)
     }
 
     private fun assertEqBigDecimal(expected: BigDecimal, value: BigDecimal) {

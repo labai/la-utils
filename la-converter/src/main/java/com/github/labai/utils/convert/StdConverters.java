@@ -98,14 +98,14 @@ class StdConverters {
                 return value -> value == null ? null : new BigDecimal(value.toString());
             if (fromClass == double.class || fromClass == float.class || fromClass == Double.class || fromClass == Float.class)
                 return value -> value == null ? null : BigDecimal.valueOf(((Number) value).doubleValue());
-            if (fromClass == Integer.class || fromClass == Long.class || fromClass == long.class || fromClass == int.class)
+            if (fromClass == Long.class || fromClass == long.class)
                 return value -> value == null ? null : new BigDecimal(((Number) value).longValue());
+            if (fromClass == Integer.class || fromClass == int.class || fromClass == Short.class || fromClass == short.class || fromClass == Byte.class  || fromClass == byte.class)
+                return value -> value == null ? null : new BigDecimal(((Number) value).intValue());
             if (fromClass == boolean.class || fromClass == Boolean.class)
                 return value -> value == null ? null : (Boolean) value ? BigDecimal.ONE : BigDecimal.ZERO;
             if (fromClass == char.class || fromClass == Character.class)
                 return null; // do not support?
-            if (fromClass.isPrimitive())
-                return value -> BigDecimal.valueOf((long) (Number) value); // use long, floats and doubles are checked already
             if (Number.class.isAssignableFrom(fromClass))
                 return value -> value == null ? null : new BigDecimal(value.toString()); // ?
             return null;

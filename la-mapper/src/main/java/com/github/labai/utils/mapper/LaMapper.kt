@@ -26,7 +26,10 @@ package com.github.labai.utils.mapper
 import com.github.labai.utils.convert.IConverterResolver
 import com.github.labai.utils.convert.ITypeConverter
 import com.github.labai.utils.convert.LaConvUtils.ClassPairMap
+import com.github.labai.utils.convert.LaConvertException
 import com.github.labai.utils.convert.LaConverterRegistry
+import com.github.labai.utils.mapper.LaMapper.ConverterConfig
+import java.math.BigInteger
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
@@ -43,31 +46,39 @@ import kotlin.reflect.jvm.isAccessible
  * @author Augustus
  *         created on 2022.11.15
  *
+ * https://github.com/labai/la-utils/tree/main/la-mapper
+ *
  * usage e.g.
  *  val result: ResultDto = LaMapper.copyFrom(from) {
  *      ResultDto:address from { "${it.address}, Vilnius" }
  *  }
  */
 class LaMapper(
-    private val laConverterRegistry: IConverterResolver
+    laConverterRegistry: IConverterResolver,
 ) {
     private val cache: ClassPairMap<AutoMapper<*, *>> = ClassPairMap()
+    private val converterUtils = ConverterUtils(laConverterRegistry, ConverterConfig())
 
-    private val autoConvertNullForPrimitive = true // do auto-convert null to 0 for non-nullable Numbers and Boolean
-    private val autoConvertNullToString = true // do auto-convert null to "" for non-nullable Strings
+    // ...not configurable yet
+    internal class ConverterConfig {
+        internal val autoConvertNullForPrimitive = true // do auto-convert null to 0 for non-nullable Numbers and Boolean
+        internal val autoConvertNullToString = true // do auto-convert null to "" for non-nullable Strings
+        internal val autoConvertValueClass = true // convert value class to/from primitives
+        internal val autoCovertValueValue = true // convert between different value classes - even if we can, it may violate the idea of value classes
+    }
 
     companion object {
         val global = LaMapper(LaConverterRegistry.global)
 
         inline fun <reified Fr : Any, reified To : Any> copyFrom(
             from: Fr,
-            noinline mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null
+            noinline mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null,
         ): To {
             return global.copyFrom(from, Fr::class, To::class, mapping)
         }
 
         inline fun <reified Fr : Any, reified To : Any> autoMapper(
-            noinline mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null
+            noinline mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null,
         ): AutoMapper<Fr, To> {
             return global.autoMapper(Fr::class, To::class, mapping)
         }
@@ -81,7 +92,7 @@ class LaMapper(
     //
     inline fun <reified Fr : Any, reified To : Any> copyFrom(
         from: Fr,
-        noinline mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null
+        noinline mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null,
     ): To {
         return copyFrom(from, Fr::class, To::class, mapping)
     }
@@ -90,7 +101,7 @@ class LaMapper(
     // create mapper for Fr->To classes mapping
     //
     inline fun <reified Fr : Any, reified To : Any> autoMapper(
-        noinline mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null
+        noinline mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null,
     ): AutoMapper<Fr, To> {
         return autoMapper(Fr::class, To::class, mapping)
     }
@@ -99,7 +110,7 @@ class LaMapper(
         from: Fr,
         sourceType: KClass<Fr>,
         targetType: KClass<To>,
-        mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null
+        mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null,
     ): To {
         @Suppress("UNCHECKED_CAST")
         val mapper = cache.getOrPut(from::class.java, targetType.java) {
@@ -111,7 +122,7 @@ class LaMapper(
     fun <Fr : Any, To : Any> autoMapper(
         sourceType: KClass<Fr>,
         targetType: KClass<To>,
-        mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null
+        mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null,
     ): AutoMapper<Fr, To> {
         return if (mapping != null) {
             val builder = MapperBuilder<Fr, To>()
@@ -189,14 +200,14 @@ class LaMapper(
 
             // ordinary (non-constructor) fields, auto mapped
             for (fmap in propsConverters) {
-                val valTo = fmap.sourceProp.get(from)?.let { fmap.convFn?.convert(it) } ?: convertNull(fmap.targetProp.returnType)
+                val valTo = fmap.sourceProp.get(from)?.let { fmap.convFn?.convert(it) } ?: converterUtils.convertNull(fmap.targetProp.returnType)
                 fmap.targetProp.set(target, valTo)
             }
 
             // ordinary (non-constructor) fields, manually mapped
             for ((toProp, mapFn) in propsMapper) {
                 val valTo = mapFn.invoke(from)
-                val valConv = if (valTo == null) convertNull(toProp.returnType) else convert(valTo, toProp)
+                val valConv = if (valTo == null) converterUtils.convertNull(toProp.returnType) else convertProp(valTo, toProp)
                 toProp.set(target, valConv)
             }
             return target
@@ -213,20 +224,20 @@ class LaMapper(
                     throw IllegalArgumentException("Parameter '$name' is missing")
                 prop?.get(from)
             }
-            value ?: return convertNull(param.type)
+            value ?: return converterUtils.convertNull(param.type)
             if (param.type == value::class)
                 return value
-            return convert(value, param)
+            return convertArg(value, param)
         }
 
-        private fun convert(value: Any, targetParam: KParameter): Any? {
+        private fun convertArg(value: Any, targetParam: KParameter): Any? {
             val name = targetParam.name ?: return null
             val conv = afterMapConverters.getOrPut(name) {
                 if (targetParam.type.classifier is KClass<*>) {
-                    val sourceClass: Class<*> = value::class.java
-                    val targetClass: Class<*> = (targetParam.type.classifier as KClass<*>).java
-                    getConverter(sourceClass, targetClass)
-                        ?: throw java.lang.IllegalArgumentException("Mapping not found for constructor argument '$name' ($sourceClass to $targetClass)")
+                    val sourceKlass: KClass<*> = value::class
+                    val targetKlass: KClass<*> = (targetParam.type.classifier as KClass<*>)
+                    converterUtils.getConverter(sourceKlass, targetKlass)
+                        ?: throw java.lang.IllegalArgumentException("Mapping not found for constructor argument '$name' ($sourceKlass to $targetKlass)")
                 } else {
                     throw java.lang.IllegalArgumentException("Invalid class constructor argument for field '$name'")
                 }
@@ -234,13 +245,13 @@ class LaMapper(
             return conv.convert(value)
         }
 
-        private fun convert(value: Any, targetProp: KMutableProperty1<To, in Any?>): Any? {
+        private fun convertProp(value: Any, targetProp: KMutableProperty1<To, in Any?>): Any? {
             val name = targetProp.name
             val conv = afterMapConverters.getOrPut(name) {
-                val sourceClass: Class<*> = value::class.java
-                val targetClass: Class<*> = (targetProp.returnType.classifier as KClass<*>).java
-                getConverter(sourceClass, targetClass)
-                    ?: throw java.lang.IllegalArgumentException("Mapping not found for class field '$name' ($sourceClass to $targetClass)")
+                val sourceKlass: KClass<*> = value::class
+                val targetKlass: KClass<*> = (targetProp.returnType.classifier as KClass<*>)
+                converterUtils.getConverter(sourceKlass, targetKlass)
+                    ?: throw java.lang.IllegalArgumentException("Mapping not found for class field '$name' ($sourceKlass to $targetKlass)")
             }
             return conv.convert(value)
         }
@@ -248,7 +259,7 @@ class LaMapper(
         private fun initPropConverters(
             sourceClass: KClass<Fr>,
             targetClass: KClass<To>,
-            skip: Set<String>
+            skip: Set<String>,
         ): List<PropMap<Fr, To>> {
             val propsFr: Map<String, KProperty1<Fr, *>> = sourceClass.memberProperties
                 .filterNot { it.name in skip }
@@ -260,54 +271,15 @@ class LaMapper(
                 .filter { it.name in propsFr }
                 .onEach { it.isAccessible = true }
                 .mapNotNull {
-                    val convFn = getConverter(propsFr[it.name] as KProperty1<Fr, *>, it)
+                    val convFn = converterUtils.getConverter(propsFr[it.name] as KProperty1<Fr, *>, it)
                     if (convFn == null)
                         null
                     else PropMap(
                         sourceProp = propsFr[it.name]!!,
                         targetProp = it,
-                        convFn = convFn
+                        convFn = convFn,
                     )
                 }
-        }
-
-        @Suppress("UNCHECKED_CAST")
-        private fun <Fr, To> getConverter(sourceType: Class<Fr>, targetType: Class<To>): ConvFn? {
-            return laConverterRegistry.getConverter(sourceType, targetType) as ConvFn?
-        }
-
-        @Suppress("UNCHECKED_CAST")
-        private fun <Fr, To> getConverter(sourceType: KProperty1<Fr, *>, targetType: KProperty1<To, *>): ConvFn? {
-            val sourceClass: Class<*> = (sourceType.returnType.classifier as KClass<*>).java
-            val targetClass: Class<*> = (targetType.returnType.classifier as KClass<*>).java
-            return laConverterRegistry.getConverter(sourceClass, targetClass) as ConvFn?
-        }
-
-        private fun convertNull(klass: KClass<*>): Any? {
-            if (klass.java == String::class.java)
-                return if (autoConvertNullToString) "" else null
-            if (!autoConvertNullForPrimitive)
-                return null
-            when (klass) {
-                Boolean::class -> return false
-                Char::class -> return '\u0000'
-                Byte::class -> return 0
-                Short::class -> return 0
-                Int::class -> return 0
-                Float::class -> return 0.0f
-                Long::class -> return 0L
-                Double::class -> return 0.0
-            }
-            return null
-        }
-
-        private fun convertNull(targetType: KType): Any? {
-            if (targetType.isMarkedNullable)
-                return null
-            if (targetType.classifier !is KClass<*>)
-                return null
-            val klass = targetType.classifier as KClass<*>
-            return convertNull(klass)
         }
     }
 
@@ -336,6 +308,180 @@ class LaMapper(
 
 interface AutoMapper<Fr : Any, To : Any> {
     fun transform(from: Fr): To
+}
+
+internal class ConverterUtils(
+    private val laConverterRegistry: IConverterResolver,
+    private val converterConfig: ConverterConfig,
+) {
+
+    fun <Fr, To> getConverter(sourceType: KProperty1<Fr, *>, targetType: KProperty1<To, *>): ConvFn? {
+        val sourceKlass: KClass<*> = (sourceType.returnType.classifier as KClass<*>)
+        val targetKlass: KClass<*> = (targetType.returnType.classifier as KClass<*>)
+        return getConverter(sourceKlass, targetKlass)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun getConverter(sourceKlass: KClass<*>, targetKlass: KClass<*>): ConvFn? {
+        val sourceClass: Class<*> = sourceKlass.java
+        val targetClass: Class<*> = targetKlass.java
+        var convFn = getLaConverter(sourceClass, targetClass)
+        if (convFn != null)
+            return convFn
+        if (!converterConfig.autoConvertValueClass)
+            return null
+
+        // for value classes try more combination (value to/from simple)
+        val sourceUnwrapped = getCustomUnwrappedTypeOrNull(sourceKlass)
+        if (sourceUnwrapped != null) {
+            val fn = getLaConverter(sourceUnwrapped.java, targetClass)
+            if (fn != null)
+                return wrapSourceValueClassConverter(sourceKlass as KClass<Any>, fn)
+        }
+
+        val targetUnwrapped = getCustomUnwrappedTypeOrNull(targetKlass)
+        if (targetUnwrapped != null && targetUnwrapped != String::class) { // laConverter can convert anything to String. Exclude this case for value class
+            val fn = getLaConverter(sourceClass, targetUnwrapped.java)
+            if (fn != null)
+                return wrapTargetValueClassConverter(targetKlass as KClass<Any>, fn)
+        }
+
+        if (converterConfig.autoCovertValueValue) {
+            if (sourceUnwrapped != null && targetUnwrapped != null) {
+                val fn = getLaConverter(sourceUnwrapped.java, targetUnwrapped.java)
+                if (fn != null)
+                    return wrapSourceAndTargetValueClassConverter(sourceKlass as KClass<Any>, targetKlass as KClass<Any>, fn)
+            }
+        }
+
+        // UByte, UShort, UInt, ULong
+        convFn = getKotlinUNumberConverter(sourceKlass, targetKlass)
+        if (convFn != null)
+            return convFn
+
+        throw LaConvertException("Convert case is not defined (targetType=$sourceKlass, sourceType=$targetKlass)")
+    }
+
+    private fun getLaConverter(sourceClass: Class<*>, targetClass: Class<*>): ConvFn? {
+        return try {
+            laConverterRegistry.getConverter(sourceClass, targetClass) as ConvFn?
+        } catch (e: LaConvertException) {
+            null
+        }
+    }
+
+    private fun wrapSourceValueClassConverter(klass: KClass<Any>, convFn: ConvFn): ConvFn? {
+        val mainProp = klass.memberProperties.singleOrNull() ?: return null
+        return ITypeConverter { convFn.convert(mainProp.get(it as Any)) }
+    }
+
+    private fun wrapTargetValueClassConverter(klass: KClass<Any>, convFn: ConvFn): ConvFn? {
+        val mainConstr = klass.primaryConstructor ?: return null
+        return ITypeConverter { convFn.convert(it)?.let { res -> mainConstr.call(res) } }
+    }
+
+    private fun wrapSourceAndTargetValueClassConverter(srcKlass: KClass<Any>, trgKlass: KClass<Any>, convFn: ConvFn): ConvFn? {
+        val mainProp = srcKlass.memberProperties.singleOrNull() ?: return null
+        val mainConstr = trgKlass.primaryConstructor ?: return null
+        return ITypeConverter { convFn.convert(mainProp.get(it as Any))?.let { res -> mainConstr.call(res) } }
+    }
+
+    private fun getCustomUnwrappedTypeOrNull(mainKlass: KClass<*>): KClass<*>? {
+        if (!mainKlass.isValue)
+            return null
+        return mainKlass.primaryConstructor?.parameters?.singleOrNull()?.type?.classifier as KClass<*>?
+    }
+
+    internal fun getKotlinUNumberConverter(sourceKlass: KClass<*>, targetKlass: KClass<*>): ConvFn? {
+        val resultKlass: KClass<out Any>?
+        val resultConv: ((Any?) -> Any?)?
+        when (targetKlass) {
+            UByte::class -> {
+                resultKlass = Short::class
+                resultConv = { it -> (it as Short).toUByte() }
+            }
+            UShort::class -> {
+                resultKlass = Int::class
+                resultConv = { (it as Int).toUShort() }
+            }
+            UInt::class -> {
+                resultKlass = Long::class
+                resultConv = { (it as Long).toUInt() }
+            }
+            ULong::class -> {
+                resultKlass = BigInteger::class
+                resultConv = { (it as BigInteger).toString().toULong() }
+            }
+            else -> {
+                resultKlass = targetKlass
+                resultConv = { it }
+            }
+        }
+
+        when (sourceKlass) {
+            UByte::class -> {
+                val convFn = getLaConverter(Short::class.java, resultKlass.java)
+                if (convFn != null)
+                    return ITypeConverter { resultConv(convFn.convert((it as UByte).toShort())) }
+            }
+            UShort::class -> {
+                val convFn = getLaConverter(Int::class.java, resultKlass.java)
+                if (convFn != null) {
+                    return ITypeConverter { resultConv(convFn.convert((it as UShort).toInt())) }
+                }
+            }
+            UInt::class -> {
+                val convFn = getLaConverter(Long::class.java, resultKlass.java)
+                if (convFn != null)
+                    return ITypeConverter { resultConv(convFn.convert((it as UInt).toLong())) }
+            }
+            ULong::class -> {
+                val convFn = getLaConverter(BigInteger::class.java, resultKlass.java)
+                if (convFn != null)
+                    return ITypeConverter { resultConv(convFn.convert((it as ULong).toString().toBigInteger())) }
+            }
+            else -> {
+                if (resultKlass != targetKlass) {
+                    val convFn = getLaConverter(sourceKlass.java, resultKlass.java)
+                    if (convFn != null)
+                        return ITypeConverter { resultConv(convFn.convert(it)) }
+                }
+            }
+        }
+
+        return null
+    }
+
+    fun convertNull(klass: KClass<*>): Any? {
+        if (klass.java == String::class.java)
+            return if (converterConfig.autoConvertNullToString) "" else null
+        if (!converterConfig.autoConvertNullForPrimitive)
+            return null
+        when (klass) {
+            Boolean::class -> return false
+            Char::class -> return '\u0000'
+            Byte::class -> return 0
+            UByte::class -> return 0
+            Short::class -> return 0
+            UShort::class -> return 0
+            Int::class -> return 0
+            UInt::class -> return 0
+            Long::class -> return 0L
+            ULong::class -> return 0L
+            Float::class -> return 0.0f
+            Double::class -> return 0.0
+        }
+        return null
+    }
+
+    fun convertNull(targetType: KType): Any? {
+        if (targetType.isMarkedNullable)
+            return null
+        if (targetType.classifier !is KClass<*>)
+            return null
+        val klass = targetType.classifier as KClass<*>
+        return convertNull(klass)
+    }
 }
 
 private typealias ConvFn = ITypeConverter<in Any, out Any?>
