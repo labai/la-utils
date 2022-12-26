@@ -1,21 +1,18 @@
 import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.ConverterUtils
 import com.github.labai.utils.mapper.LaMapper.ConverterConfig
-import com.google.gson.GsonBuilder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.math.BigDecimal
 import java.math.BigInteger
-import java.util.Arrays
 import kotlin.test.fail
 
 /**
  * @author Augustus
- *         created on 2022.11.16
+ *         created on 2022.12.25
  */
 class UNumberConverterTest {
-    private val gson = GsonBuilder().setPrettyPrinting().create()
     private val converterUtils = ConverterUtils(LaConverterRegistry.global, ConverterConfig())
 
     @Test
@@ -46,9 +43,11 @@ class UNumberConverterTest {
         val us5: UShort = 5u
         val ui5: UInt = 5u
         val ul5: ULong = 5u
-        val fives = Arrays.asList<Any>(
+        val fives = listOf<Any>(
             5L,
-            5, 5.toShort(), 5.toByte(),
+            5,
+            5.toShort(),
+            5.toByte(),
             BigInteger.valueOf(5),
             BigDecimal(5),
             5.0f,

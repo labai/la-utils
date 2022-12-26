@@ -3,7 +3,7 @@
 
 	<groupId>com.github.labai.utils</groupId>
 	<artifactId>la-mapper</artifactId>
-	<version>0.1.0</version>
+	<version>0.1.1-SNAPSHOT</version>
 	<name>Mapper</name>
 	<packaging>jar</packaging>
 	<description>Data mapper for kotlin</description>
@@ -129,6 +129,9 @@
 				</executions>
 				<configuration>
 					<jvmTarget>1.8</jvmTarget>
+					<args>
+						<arg>-Werror</arg>
+					</args>
 				</configuration>
 			</plugin>
 

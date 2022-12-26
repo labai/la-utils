@@ -25,12 +25,14 @@ package com.github.labai.utils.mapper
 
 import com.github.labai.utils.convert.IConverterResolver
 import com.github.labai.utils.convert.ITypeConverter
-import com.github.labai.utils.convert.LaConvUtils.ClassPairMap
 import com.github.labai.utils.convert.LaConvertException
 import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.LaMapper.ConverterConfig
+import org.jetbrains.annotations.TestOnly
 import java.math.BigInteger
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.function.Supplier
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KMutableProperty1
@@ -52,11 +54,13 @@ import kotlin.reflect.jvm.isAccessible
  *  val result: ResultDto = LaMapper.copyFrom(from) {
  *      ResultDto:address from { "${it.address}, Vilnius" }
  *  }
+ *
  */
 class LaMapper(
     laConverterRegistry: IConverterResolver,
 ) {
-    private val cache: ClassPairMap<AutoMapper<*, *>> = ClassPairMap()
+    @get:TestOnly
+    internal val cache: ClassTrioMap<AutoMapper<*, *>> = ClassTrioMap()
     private val converterUtils = ConverterUtils(laConverterRegistry, ConverterConfig())
 
     // ...not configurable yet
@@ -113,7 +117,7 @@ class LaMapper(
         mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null,
     ): To {
         @Suppress("UNCHECKED_CAST")
-        val mapper = cache.getOrPut(from::class.java, targetType.java) {
+        val mapper = cache.getOrPut(from::class, targetType, if (mapping == null) null else mapping::class) {
             autoMapper(sourceType, targetType, mapping)
         } as AutoMapper<Fr, To>
         return mapper.transform(from)
@@ -354,7 +358,6 @@ internal class ConverterUtils(
             }
         }
 
-        // UByte, UShort, UInt, ULong
         convFn = getKotlinUNumberConverter(sourceKlass, targetKlass)
         if (convFn != null)
             return convFn
@@ -362,6 +365,7 @@ internal class ConverterUtils(
         throw LaConvertException("Convert case is not defined (targetType=$sourceKlass, sourceType=$targetKlass)")
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun getLaConverter(sourceClass: Class<*>, targetClass: Class<*>): ConvFn? {
         return try {
             laConverterRegistry.getConverter(sourceClass, targetClass) as ConvFn?
@@ -392,6 +396,7 @@ internal class ConverterUtils(
         return mainKlass.primaryConstructor?.parameters?.singleOrNull()?.type?.classifier as KClass<*>?
     }
 
+    // UByte, UShort, UInt, ULong
     internal fun getKotlinUNumberConverter(sourceKlass: KClass<*>, targetKlass: KClass<*>): ConvFn? {
         val resultKlass: KClass<out Any>?
         val resultConv: ((Any?) -> Any?)?
@@ -482,6 +487,28 @@ internal class ConverterUtils(
         val klass = targetType.classifier as KClass<*>
         return convertNull(klass)
     }
+}
+
+internal class ClassTrioMap<T> {
+    private val map: MutableMap<ClassTrio, T> = ConcurrentHashMap()
+
+    private data class ClassTrio(val source: KClass<*>, val target: KClass<*>, val mapper: KClass<*>?)
+
+    fun <Fr : Any, To : Any> getOrPut(sourceType: KClass<Fr>, targetType: KClass<To>, mapperClass: KClass<*>?, itemFn: Supplier<T>): T {
+        val key = ClassTrio(sourceType, targetType, mapperClass)
+        val value = map[key]
+        if (value != null) return value
+        synchronized(map) {
+            return map.computeIfAbsent(key) { itemFn.get() }
+        }
+    }
+
+    operator fun <Fr : Any, To : Any> get(sourceType: KClass<Fr>, targetType: KClass<To>, mapperClass: KClass<*>?): T? {
+        return map[ClassTrio(sourceType, targetType, mapperClass)]
+    }
+
+    @TestOnly
+    internal fun getMapSize() = map.size
 }
 
 private typealias ConvFn = ITypeConverter<in Any, out Any?>
