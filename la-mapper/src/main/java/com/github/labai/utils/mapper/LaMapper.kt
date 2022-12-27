@@ -318,6 +318,7 @@ internal class ConverterUtils(
     private val laConverterRegistry: IConverterResolver,
     private val converterConfig: ConverterConfig,
 ) {
+    private val unumberConverterResolver = KotlinUNumberConverterResolver(laConverterRegistry)
 
     fun <Fr, To> getConverter(sourceType: KProperty1<Fr, *>, targetType: KProperty1<To, *>): ConvFn? {
         val sourceKlass: KClass<*> = (sourceType.returnType.classifier as KClass<*>)
@@ -327,9 +328,7 @@ internal class ConverterUtils(
 
     @Suppress("UNCHECKED_CAST")
     fun getConverter(sourceKlass: KClass<*>, targetKlass: KClass<*>): ConvFn? {
-        val sourceClass: Class<*> = sourceKlass.java
-        val targetClass: Class<*> = targetKlass.java
-        var convFn = getLaConverter(sourceClass, targetClass)
+        var convFn = getLaConverter(sourceKlass, targetKlass)
         if (convFn != null)
             return convFn
         if (!converterConfig.autoConvertValueClass)
@@ -338,27 +337,27 @@ internal class ConverterUtils(
         // for value classes try more combination (value to/from simple)
         val sourceUnwrapped = getCustomUnwrappedTypeOrNull(sourceKlass)
         if (sourceUnwrapped != null) {
-            val fn = getLaConverter(sourceUnwrapped.java, targetClass)
+            val fn = getLaConverter(sourceUnwrapped, targetKlass)
             if (fn != null)
                 return wrapSourceValueClassConverter(sourceKlass as KClass<Any>, fn)
         }
 
         val targetUnwrapped = getCustomUnwrappedTypeOrNull(targetKlass)
         if (targetUnwrapped != null && targetUnwrapped != String::class) { // laConverter can convert anything to String. Exclude this case for value class
-            val fn = getLaConverter(sourceClass, targetUnwrapped.java)
+            val fn = getLaConverter(sourceKlass, targetUnwrapped)
             if (fn != null)
                 return wrapTargetValueClassConverter(targetKlass as KClass<Any>, fn)
         }
 
         if (converterConfig.autoCovertValueValue) {
             if (sourceUnwrapped != null && targetUnwrapped != null) {
-                val fn = getLaConverter(sourceUnwrapped.java, targetUnwrapped.java)
+                val fn = getLaConverter(sourceUnwrapped, targetUnwrapped)
                 if (fn != null)
                     return wrapSourceAndTargetValueClassConverter(sourceKlass as KClass<Any>, targetKlass as KClass<Any>, fn)
             }
         }
 
-        convFn = getKotlinUNumberConverter(sourceKlass, targetKlass)
+        convFn = unumberConverterResolver.getKConverter(sourceKlass, targetKlass)
         if (convFn != null)
             return convFn
 
@@ -366,12 +365,13 @@ internal class ConverterUtils(
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun getLaConverter(sourceClass: Class<*>, targetClass: Class<*>): ConvFn? {
-        return try {
-            laConverterRegistry.getConverter(sourceClass, targetClass) as ConvFn?
+    private fun getLaConverter(sourceKlass: KClass<*>, targetKlass: KClass<*>): ConvFn? {
+        try {
+            return laConverterRegistry.getConverter(sourceKlass.java, targetKlass.java) as ConvFn?
         } catch (e: LaConvertException) {
-            null
+            // continue
         }
+        return unumberConverterResolver.getKConverter(sourceKlass, targetKlass)
     }
 
     private fun wrapSourceValueClassConverter(klass: KClass<Any>, convFn: ConvFn): ConvFn? {
@@ -396,68 +396,7 @@ internal class ConverterUtils(
         return mainKlass.primaryConstructor?.parameters?.singleOrNull()?.type?.classifier as KClass<*>?
     }
 
-    // UByte, UShort, UInt, ULong
-    internal fun getKotlinUNumberConverter(sourceKlass: KClass<*>, targetKlass: KClass<*>): ConvFn? {
-        val resultKlass: KClass<out Any>?
-        val resultConv: ((Any?) -> Any?)?
-        when (targetKlass) {
-            UByte::class -> {
-                resultKlass = Short::class
-                resultConv = { it -> (it as Short).toUByte() }
-            }
-            UShort::class -> {
-                resultKlass = Int::class
-                resultConv = { (it as Int).toUShort() }
-            }
-            UInt::class -> {
-                resultKlass = Long::class
-                resultConv = { (it as Long).toUInt() }
-            }
-            ULong::class -> {
-                resultKlass = BigInteger::class
-                resultConv = { (it as BigInteger).toString().toULong() }
-            }
-            else -> {
-                resultKlass = targetKlass
-                resultConv = { it }
-            }
-        }
-
-        when (sourceKlass) {
-            UByte::class -> {
-                val convFn = getLaConverter(Short::class.java, resultKlass.java)
-                if (convFn != null)
-                    return ITypeConverter { resultConv(convFn.convert((it as UByte).toShort())) }
-            }
-            UShort::class -> {
-                val convFn = getLaConverter(Int::class.java, resultKlass.java)
-                if (convFn != null) {
-                    return ITypeConverter { resultConv(convFn.convert((it as UShort).toInt())) }
-                }
-            }
-            UInt::class -> {
-                val convFn = getLaConverter(Long::class.java, resultKlass.java)
-                if (convFn != null)
-                    return ITypeConverter { resultConv(convFn.convert((it as UInt).toLong())) }
-            }
-            ULong::class -> {
-                val convFn = getLaConverter(BigInteger::class.java, resultKlass.java)
-                if (convFn != null)
-                    return ITypeConverter { resultConv(convFn.convert((it as ULong).toString().toBigInteger())) }
-            }
-            else -> {
-                if (resultKlass != targetKlass) {
-                    val convFn = getLaConverter(sourceKlass.java, resultKlass.java)
-                    if (convFn != null)
-                        return ITypeConverter { resultConv(convFn.convert(it)) }
-                }
-            }
-        }
-
-        return null
-    }
-
-    fun convertNull(klass: KClass<*>): Any? {
+    private fun convertNull(klass: KClass<*>): Any? {
         if (klass.java == String::class.java)
             return if (converterConfig.autoConvertNullToString) "" else null
         if (!converterConfig.autoConvertNullForPrimitive)
@@ -486,6 +425,81 @@ internal class ConverterUtils(
             return null
         val klass = targetType.classifier as KClass<*>
         return convertNull(klass)
+    }
+}
+
+// UByte, UShort, UInt, ULong
+internal class KotlinUNumberConverterResolver(
+    private val laConverterRegistry: IConverterResolver,
+) {
+
+    fun <Fr : Any, To : Any> getKConverter(sourceKType: KClass<Fr>, targetKType: KClass<To>): ConvFn? {
+        val resultKlass: KClass<out Any>?
+        val resultConv: ((Any?) -> Any?)?
+        when (targetKType) {
+            UByte::class -> {
+                resultKlass = Short::class
+                resultConv = { it -> (it as Short).toUByte() }
+            }
+            UShort::class -> {
+                resultKlass = Int::class
+                resultConv = { (it as Int).toUShort() }
+            }
+            UInt::class -> {
+                resultKlass = Long::class
+                resultConv = { (it as Long).toUInt() }
+            }
+            ULong::class -> {
+                resultKlass = BigInteger::class
+                resultConv = { (it as BigInteger).toString().toULong() }
+            }
+            else -> {
+                resultKlass = targetKType
+                resultConv = { it }
+            }
+        }
+
+        when (sourceKType) {
+            UByte::class -> {
+                val convFn = getLaConverter(Short::class, resultKlass)
+                if (convFn != null)
+                    return ITypeConverter { resultConv(convFn.convert((it as UByte).toShort())) }
+            }
+            UShort::class -> {
+                val convFn = getLaConverter(Int::class, resultKlass)
+                if (convFn != null) {
+                    return ITypeConverter { resultConv(convFn.convert((it as UShort).toInt())) }
+                }
+            }
+            UInt::class -> {
+                val convFn = getLaConverter(Long::class, resultKlass)
+                if (convFn != null)
+                    return ITypeConverter { resultConv(convFn.convert((it as UInt).toLong())) }
+            }
+            ULong::class -> {
+                val convFn = getLaConverter(BigInteger::class, resultKlass)
+                if (convFn != null)
+                    return ITypeConverter { resultConv(convFn.convert((it as ULong).toString().toBigInteger())) }
+            }
+            else -> {
+                if (resultKlass != targetKType) {
+                    val convFn = getLaConverter(sourceKType, resultKlass)
+                    if (convFn != null)
+                        return ITypeConverter { resultConv(convFn.convert(it)) }
+                }
+            }
+        }
+
+        return null
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun getLaConverter(sourceKlass: KClass<*>, targetKlass: KClass<*>): ConvFn? {
+        return try {
+            return laConverterRegistry.getConverter(sourceKlass.java, targetKlass.java) as ConvFn?
+        } catch (e: LaConvertException) {
+            null
+        }
     }
 }
 

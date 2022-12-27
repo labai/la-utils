@@ -367,8 +367,29 @@ class LaMapperTest {
         assertEquals(Age(10), res2.age)
     }
 
-    private fun assertEqBigDecimal(expected: BigDecimal, value: BigDecimal) {
-        assertTrue(value.compareTo(expected) == 0, "Expected '$expected', got '$value'")
+    @JvmInline
+    value class AgeUInt(val value: UInt) {
+        override fun toString() = "AgeUInt($value)"
+    }
+
+    @JvmInline
+    value class AgeUByte(val age: UByte) {
+        override fun toString() = "AgeUByte($age)"
+    }
+
+    @Test
+    fun test_mappings_value_class_unumber() {
+        class FrDto(val age: AgeUInt)
+        class ToDto(val age: AgeUByte)
+
+        val from = FrDto(age = AgeUInt(10u))
+        val mapper = LaMapper.autoMapper<FrDto, ToDto>()
+        val res = mapper.transform(from)
+        assertEquals(AgeUByte(10u), res.age)
+
+        val mapper2 = LaMapper.autoMapper<ToDto, FrDto>()
+        val res2 = mapper2.transform(res)
+        assertEquals(AgeUInt(10u), res2.age)
     }
 
     private fun assertEqBigDecimal(expectedAsStr: String, value: BigDecimal) {

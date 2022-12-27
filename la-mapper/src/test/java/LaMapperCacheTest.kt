@@ -27,14 +27,14 @@ class LaMapperCacheTest {
         assertEquals(2, LaMapper.global.cache.getMapSize())
 
         for (i in 1..2) {
-            val to3 = LaMapper.copyFrom(from) {
+            LaMapper.copyFrom(from) {
                 To::value from { "C=${it.value}" }
             }
         }
         assertEquals(3, LaMapper.global.cache.getMapSize())
 
         for (i in 1..2) {
-            val to3: To = LaMapper.copyFrom(from)
+            LaMapper.copyFrom<From, To>(from)
         }
         assertEquals(4, LaMapper.global.cache.getMapSize())
     }

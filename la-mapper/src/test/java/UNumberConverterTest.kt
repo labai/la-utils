@@ -1,6 +1,5 @@
 import com.github.labai.utils.convert.LaConverterRegistry
-import com.github.labai.utils.mapper.ConverterUtils
-import com.github.labai.utils.mapper.LaMapper.ConverterConfig
+import com.github.labai.utils.mapper.KotlinUNumberConverterResolver
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -13,26 +12,26 @@ import kotlin.test.fail
  *         created on 2022.12.25
  */
 class UNumberConverterTest {
-    private val converterUtils = ConverterUtils(LaConverterRegistry.global, ConverterConfig())
+    private val unumberConvResolver = KotlinUNumberConverterResolver(LaConverterRegistry.global)
 
     @Test
     fun test_simple() {
-        val convFn = converterUtils.getKotlinUNumberConverter(UInt::class, ULong::class) ?: fail("can't get converter")
+        val convFn = unumberConvResolver.getKConverter(UInt::class, ULong::class) ?: fail("can't get converter")
         assertEquals(42UL, convFn.convert(42u))
     }
 
     @Test
     fun test_max_num() {
-        var convFn = converterUtils.getKotlinUNumberConverter(UByte::class, Int::class) ?: fail("can't get converter")
+        var convFn = unumberConvResolver.getKConverter(UByte::class, Int::class) ?: fail("can't get converter")
         assertEquals(255, convFn.convert(UByte.MAX_VALUE))
 
-        convFn = converterUtils.getKotlinUNumberConverter(UShort::class, Int::class) ?: fail("can't get converter")
+        convFn = unumberConvResolver.getKConverter(UShort::class, Int::class) ?: fail("can't get converter")
         assertEquals(65535, convFn.convert(UShort.MAX_VALUE))
 
-        convFn = converterUtils.getKotlinUNumberConverter(UInt::class, Long::class) ?: fail("can't get converter")
+        convFn = unumberConvResolver.getKConverter(UInt::class, Long::class) ?: fail("can't get converter")
         assertEquals(4294967295L, convFn.convert(UInt.MAX_VALUE))
 
-        convFn = converterUtils.getKotlinUNumberConverter(ULong::class, BigInteger::class) ?: fail("can't get converter")
+        convFn = unumberConvResolver.getKConverter(ULong::class, BigInteger::class) ?: fail("can't get converter")
         assertEquals(BigInteger("18446744073709551615"), convFn.convert(ULong.MAX_VALUE))
     }
 
@@ -68,7 +67,7 @@ class UNumberConverterTest {
     }
 
     private fun testConvNum(from: Any, expected: Any) {
-        val converter = converterUtils.getKotlinUNumberConverter(from::class, expected::class) ?: fail("cant get converter")
+        val converter = unumberConvResolver.getKConverter(from::class, expected::class) ?: fail("cant get converter")
         println("Converting ${from::class} to ${expected::class}")
         val converted = converter.convert(from)
         val msg = "failed conv " + from.javaClass + " to " + converted!!::class + " (expected " + expected::class + ")"
