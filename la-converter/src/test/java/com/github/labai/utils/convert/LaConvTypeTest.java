@@ -25,8 +25,6 @@ public class LaConvTypeTest {
         assertEquals(converter.convert(from), expected);
     }
 
-
-
     @Test
     public void test_conv_numbers_integer() {
         List<Object> fives = Arrays.asList(

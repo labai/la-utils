@@ -3,6 +3,9 @@ package com.github.labai.utils.convert;
 import com.github.labai.utils.convert.LaConvUtils.ClassPairMap;
 import com.github.labai.utils.convert.ext.DeciConverters;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 /**
  * @author Augustus
  * created on 2022.11.19
@@ -11,6 +14,8 @@ import com.github.labai.utils.convert.ext.DeciConverters;
  * LaConverterRegistry registry = new LaConverterRegistry();
  * converter = registry.getConverter(String.class, Long.class);
  * Long res = converter.convert("12");
+ *
+ * return null if not found
  */
 public class LaConverterRegistry implements IConverterResolver {
 
@@ -23,14 +28,23 @@ public class LaConverterRegistry implements IConverterResolver {
         DeciConverters.registryDeciConverters((LaConverterRegistry) global);
     }
 
+    private final Set<IConverterResolver> extResolvers = new LinkedHashSet<>();
     private final ClassPairMap<ITypeConverter<?, ?>> extConverters = new ClassPairMap<>();
 
     public <Fr, To> void registerConverter(Class<Fr> sourceType, Class<To> targetType, ITypeConverter<Fr, To> converter) {
         extConverters.getOrPut(sourceType, targetType, () -> converter);
     }
 
+    public <Fr, To> void registerExtResolver(IConverterResolver resolver) {
+        extResolvers.add(resolver);
+    }
+
     public static <Fr, To> void registerGlobalConverter(Class<Fr> sourceType, Class<To> targetType, ITypeConverter<Fr, To> converter) {
         ((LaConverterRegistry) global).extConverters.getOrPut(sourceType, targetType, () -> converter);
+    }
+
+    public static <Fr, To> void registerGlobalExtResolver(IConverterResolver resolver) {
+        ((LaConverterRegistry) global).extResolvers.add(resolver);
     }
 
     @SuppressWarnings({"unchecked"})
@@ -40,15 +54,35 @@ public class LaConverterRegistry implements IConverterResolver {
             return it -> (To) it;
         }
 
-        // external converters
-        ITypeConverter<?, ?> extConv = extConverters.get(sourceType, targetType);
-        if (extConv != null)
-            return (ITypeConverter<Fr, To>) extConv;
+        // external resolver
+        for (IConverterResolver resolver : extResolvers) {
+            ITypeConverter<Fr, To> extConv = resolver.getConverter(sourceType, targetType);
+            if (extConv != null)
+                return extConv;
+        }
 
-        // external global converters
-        extConv = ((LaConverterRegistry) global).extConverters.get(sourceType, targetType);
-        if (extConv != null)
-            return (ITypeConverter<Fr, To>) extConv;
+        // external converters
+        {
+            ITypeConverter<?, ?> extConv = extConverters.get(sourceType, targetType);
+            if (extConv != null)
+                return (ITypeConverter<Fr, To>) extConv;
+        }
+
+        // also check global config (if this is not global)
+        if (global != this) {
+            // external global resolver
+            for (IConverterResolver resolver : ((LaConverterRegistry) global).extResolvers) {
+                ITypeConverter<Fr, To> extConv = resolver.getConverter(sourceType, targetType);
+                if (extConv != null)
+                    return extConv;
+            }
+            // external global converters
+            {
+                ITypeConverter<?, ?> extConv = ((LaConverterRegistry) global).extConverters.get(sourceType, targetType);
+                if (extConv != null)
+                    return (ITypeConverter<Fr, To>) extConv;
+            }
+        }
 
         // any type can be converted to String
         if (targetType == String.class) {
@@ -65,6 +99,6 @@ public class LaConverterRegistry implements IConverterResolver {
             return targetType::cast;
         }
 
-        throw new LaConvertException("Convert case is not defined (field.class=" + targetType.getCanonicalName() + ", value.class=" + sourceType.getCanonicalName() + ")");
+        return null;
     }
 }
