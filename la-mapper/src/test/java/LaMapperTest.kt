@@ -1,14 +1,15 @@
-import TestStructJv.Test1Pojo
-import TestStructJv.Test2PojoConstr
+import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.LaMapper
+import com.github.labai.utils.mapper.LaMapper.AutoMapperImpl
+import com.github.labai.utils.mapper.MapperCompiler
 import com.google.gson.GsonBuilder
-import org.junit.Assert.assertThrows
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 /**
  * @author Augustus
@@ -17,21 +18,33 @@ import kotlin.test.assertTrue
 class LaMapperTest {
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
-    @Test
-    fun test_constructor_to_constructor() {
-        data class From(
-            val v1: Int,
-            val v2: BigDecimal,
-        )
+    private fun <Fr : Any, To : Any> getMapper(type: String, mapper: AutoMapper<Fr, To>): AutoMapper<Fr, To> {
+        if (type == "reflect")
+            return mapper
+        else if (type == "compile") {
+            return MapperCompiler(LaMapper.global).compiledMapper(mapper as AutoMapperImpl)!!
+        }
+        throw IllegalArgumentException("Invalid mapper type")
+    }
 
-        class To(
-            val v1: BigDecimal,
-            val v2: BigDecimal,
-        )
+    // ----------------------------------------------------------------
+    data class Fr01(
+        val v1: Int,
+        val v2: BigDecimal,
+    )
 
-        val mapper = LaMapper.autoMapper<From, To>()
+    class To01(
+        val v1: BigDecimal,
+        val v2: BigDecimal,
+    )
 
-        val from = From(5, BigDecimal("6.5"))
+    @ParameterizedTest
+    @ValueSource(strings = ["reflect", "compile"])
+    fun test01_constructor_to_constructor(type: String) {
+        val mapperx = LaMapper.autoMapper<Fr01, To01>()
+        val mapper = getMapper(type, mapperx)
+
+        val from = Fr01(5, BigDecimal("6.5"))
 
         val res = mapper.transform(from)
 
@@ -39,26 +52,29 @@ class LaMapperTest {
         assertEqBigDecimal("6.5", res.v2)
 
         // same with copyFrom()
-        val res2: To = LaMapper.copyFrom(from)
+        val res2: To01 = LaMapper.copyFrom(from)
         assertEqBigDecimal("5", res2.v1)
         assertEqBigDecimal("6.5", res2.v2)
     }
 
-    @Test
-    fun test_fields_assign() {
-        class From {
-            var a20: Int? = null
-            var a30: LocalDate? = null
-        }
+    // ----------------------------------------------------------------
+    class Fr02 {
+        var a20: Int? = null
+        var a30: LocalDate? = null
+    }
 
-        class To {
-            var a20: Long? = null
-            var a30: LocalDateTime? = null
-        }
+    class To02 {
+        var a20: Long? = null
+        var a30: LocalDateTime? = null
+    }
 
-        val mapper = LaMapper.autoMapper<From, To>()
+    @ParameterizedTest
+    @ValueSource(strings = ["reflect", "compile"])
+    fun test02_fields_assign(type: String) {
+        val mapperx = LaMapper.autoMapper<Fr02, To02>()
+        val mapper = getMapper(type, mapperx)
 
-        val from = From().apply {
+        val from = Fr02().apply {
             a20 = 7
             a30 = LocalDate.parse("2022-11-08")
         }
@@ -69,23 +85,27 @@ class LaMapperTest {
         assertEquals(LocalDateTime.parse("2022-11-08T00:00:00"), res.a30)
     }
 
-    @Test
-    fun test_mixed_assign() {
-        class From(val v1: Int, val v2: BigDecimal) {
-            var v3: Int? = null
-            var v4: LocalDate? = null
-            var v5: Int? = null
-        }
 
-        class To(val v1: BigDecimal, var v3: Long? = null, val v5: Int) {
-            var v2: BigDecimal? = null
-            var v4: LocalDateTime? = null
-            val v6: String = "justGetter"
-        }
+    // ----------------------------------------------------------------
+    class Fr03(val v1: Int, val v2: BigDecimal) {
+        var v3: Int? = null
+        var v4: LocalDate? = null
+        var v5: Int? = null
+    }
 
-        val mapper = LaMapper.autoMapper<From, To>()
+    class To03(val v1: BigDecimal, var v3: Long? = null, val v5: Int) {
+        var v2: BigDecimal? = null
+        var v4: LocalDateTime? = null
+        val v6: String = "justGetter"
+    }
 
-        val from = From(5, BigDecimal("6.5")).apply {
+    @ParameterizedTest
+    @ValueSource(strings = ["reflect", "compile"])
+    fun test03_mixed_assign(type: String) {
+        val mapperx = LaMapper.autoMapper<Fr03, To03>()
+        val mapper = getMapper(type, mapperx)
+
+        val from = Fr03(5, BigDecimal("6.5")).apply {
             v3 = 13
             v4 = LocalDate.parse("2022-11-08")
             v5 = 15
@@ -100,25 +120,29 @@ class LaMapperTest {
         assertEquals(LocalDateTime.parse("2022-11-08T00:00:00"), res.v4)
     }
 
-    @Test
-    fun test_mappings_property_mapping() {
-        class From {
-            var v11: Int? = null
-            var v12: Long? = null
-        }
 
-        class To {
-            var v11: Long? = null
-            var v13: String? = null
-            var v14: String = "x"
-        }
+    // ----------------------------------------------------------------
+    class Fr04 {
+        var v11: Int? = null
+        var v12: Long? = null
+    }
 
-        val mapper = LaMapper.autoMapper<From, To> {
-            To::v11 from { it.v11!! * 2 }
-            To::v13 from From::v12 // should be auto-convert by types as well (Long->String)
-        }
+    class To04 {
+        var v11: Long? = null
+        var v13: String? = null
+        var v14: String = "x"
+    }
 
-        val from = From().apply {
+    @ParameterizedTest
+    @ValueSource(strings = ["reflect", "compile"])
+    fun test04_mappings_property_mapping(type: String) {
+        val mapperx = LaMapper.autoMapper<Fr04, To04> {
+            To04::v11 from { it.v11!! * 2 }
+            To04::v13 from Fr04::v12 // should be auto-convert by types as well (Long->String)
+        }
+        val mapper = getMapper(type, mapperx)
+
+        val from = Fr04().apply {
             v11 = 7
             v12 = 8L
         }
@@ -131,26 +155,30 @@ class LaMapperTest {
         assertEquals("x", res.v14)
     }
 
-    @Test
-    fun test_mappings_nulls_auto() {
-        class From(
-            val v01: Int? = null,
-            val v02: Long? = null,
-        ) {
-            var v11: Int? = null
-            var v12: Long? = null
-        }
 
-        class To {
-            var v01: Long = 5L
-            var v02: String = "x"
-            var v11: Long = 5L
-            var v12: String = "x"
-        }
+    // ----------------------------------------------------------------
+    class Fr05(
+        val v01: Int? = null,
+        val v02: Long? = null,
+    ) {
+        var v11: Int? = null
+        var v12: Long? = null
+    }
 
-        val mapper = LaMapper.autoMapper<From, To>()
+    class To05 {
+        var v01: Long = 5L
+        var v02: String = "x"
+        var v11: Long = 5L
+        var v12: String = "x"
+    }
 
-        val from = From()
+    @ParameterizedTest
+    @ValueSource(strings = ["reflect", "compile"])
+    fun test05_mappings_nulls_auto(type: String) {
+        val mapperx = LaMapper.autoMapper<Fr05, To05>()
+        val mapper = getMapper(type, mapperx)
+
+        val from = Fr05()
 
         val res = mapper.transform(from)
         println(gson.toJson(res))
@@ -161,31 +189,35 @@ class LaMapperTest {
         assertEquals("", res.v12)
     }
 
-    @Test
-    fun test_mappings_nulls_manual() {
-        class From(
-            var v01: Int? = null,
-            var v02: Long? = null,
-        ) {
-            var v11: Int? = null
-            var v12: Long? = null
-        }
 
-        class To {
-            var v01: Long = 5L
-            var v02: String = "x"
-            var v11: Long = 5L
-            var v12: String = "x"
-        }
+    // ----------------------------------------------------------------
+    class Fr06(
+        var v01: Int? = null,
+        var v02: Long? = null,
+    ) {
+        var v11: Int? = null
+        var v12: Long? = null
+    }
 
-        val mapper = LaMapper.autoMapper<From, To> {
-            To::v01 from { null }
-            To::v02 from { null }
-            To::v11 from { null }
-            To::v12 from From::v12
-        }
+    class To06 {
+        var v01: Long = 5L
+        var v02: String = "x"
+        var v11: Long = 5L
+        var v12: String = "x"
+    }
 
-        val from = From()
+    @ParameterizedTest
+    @ValueSource(strings = ["reflect", "compile"])
+    fun test06_mappings_nulls_manual(type: String) {
+        val mapperx = LaMapper.autoMapper {
+            To06::v01 from { null }
+            To06::v02 from { null }
+            To06::v11 from { null }
+            To06::v12 from Fr06::v12
+        }
+        val mapper = getMapper(type, mapperx)
+
+        val from = Fr06()
 
         val res = mapper.transform(from)
         println(gson.toJson(res))
@@ -196,36 +228,40 @@ class LaMapperTest {
         assertEquals("", res.v12) // auto-convert to ""
     }
 
-    @Test
-    fun test_mappings_constructor_args_() {
-        // not full argument constructor (will use 'hashMap' mapping)
-        class From(
-            var v01: Int? = 4,
-            var v02: Long? = 4,
-            var v03: Long? = 4,
-        ) {
-            var v11: Int = 4
-            var v12: Long? = 4
-            var v13: Long? = 4
+
+    // ----------------------------------------------------------------
+    class Fr07(
+        var v01: Int? = 4,
+        var v02: Long? = 4,
+        var v03: Long? = 4,
+    ) {
+        var v11: Int = 4
+        var v12: Long? = 4
+        var v13: Long? = 4
+    }
+
+    class To08(
+        var v01: Long = 5, // var with mapper
+        val v02: String = "x",
+        var v03: String = "x", // var, no mapper
+        var v11: Long? = 5L, // var nullable
+        val v12: String? = "x", // val nullable
+        var v13: Int = 5, // var, no mapper
+        var v14: Int? = 5, // not existing in from
+        var v15: Int = 5, // not existing in from, primitive
+    )
+
+    // not full argument constructor (will use 'hashMap' mapping)
+    @ParameterizedTest
+    @ValueSource(strings = ["reflect", "compile"])
+    fun test07_mappings_constructor_args_(type: String) {
+        val mapperx = LaMapper.autoMapper<Fr07, To08> {
+            To08::v01 from { 3 }
+            To08::v12 from Fr07::v12
         }
+        val mapper = getMapper(type, mapperx)
 
-        class To(
-            var v01: Long = 5, // var with mapper
-            val v02: String = "x",
-            var v03: String = "x", // var, no mapper
-            var v11: Long? = 5L, // var nullable
-            val v12: String? = "x", // val nullable
-            var v13: Int = 5, // var, no mapper
-            var v14: Int? = 5, // not existing in from
-            var v15: Int = 5, // not existing in from, primitive
-        )
-
-        val mapper = LaMapper.autoMapper<From, To> {
-            To::v01 from { 3 }
-            To::v12 from From::v12
-        }
-
-        val from = From()
+        val from = Fr07()
 
         val res = mapper.transform(from)
         println(gson.toJson(res))
@@ -238,158 +274,6 @@ class LaMapperTest {
         assertEquals(4, res.v13)
         assertEquals(5, res.v14)
         assertEquals(5, res.v15)
-    }
-
-    class TestPojo {
-        var field1: String? = null
-        var field2: String? = null
-        var prop1: String? = null
-        var prop2: String? = null
-        var prop3: String? = null
-    }
-
-    @Test
-    fun test_java_pojo_fields_visibility() {
-        val from = Test1Pojo().apply {
-            field1 = "x"
-            assignField2("x")
-            prop2 = "x"
-            prop3 = "x"
-        }
-
-        val mapper = LaMapper.autoMapper<Test1Pojo, TestPojo>()
-
-        val res = mapper.transform(from)
-        assertEquals("x", res.field1)
-        assertEquals("x", res.field2)
-        assertEquals("prop1", res.prop1)
-        assertEquals("x", res.prop2)
-        assertEquals("x", res.prop3)
-
-        // convert back
-        val mapper2 = LaMapper.autoMapper<TestPojo, Test1Pojo>()
-        val res2 = mapper2.transform(res)
-        assertEquals("x", res2.field1)
-        assertEquals("x", res2.retrieveField2())
-        assertEquals("prop1", res2.prop1)
-        assertEquals("x", res2.prop2)
-        assertEquals("x", res2.prop3)
-    }
-
-    @Test
-    fun test_java_pojo_no_constructor() {
-        val from = TestPojo().apply {
-            prop1 = "x"
-        }
-        assertThrows(IllegalArgumentException::class.java) {
-            val mapper = LaMapper.autoMapper<TestPojo, Test2PojoConstr>()
-            mapper.transform(from)
-        }
-    }
-
-    @JvmInline
-    value class Age(val value: Int) {
-        override fun toString() = "Age($value)"
-    }
-
-    @JvmInline
-    value class AgeS(val age: String) {
-        override fun toString() = "AgeS($age)"
-    }
-
-    @JvmInline
-    value class AgeX(val age: Long) {
-        override fun toString() = "AgeX($age)"
-    }
-
-    @Test
-    fun test_mappings_value_class_value_to_primitive_arg() {
-        class FrDto(val age: Age)
-        class ToDto(val age: Long)
-
-        val from = FrDto(Age(10))
-        val mapper = LaMapper.autoMapper<FrDto, ToDto>()
-        val res = mapper.transform(from)
-        assertEquals(10, res.age)
-
-        val mapper2 = LaMapper.autoMapper<ToDto, FrDto>()
-        val res2 = mapper2.transform(res)
-        assertEquals(Age(10), res2.age)
-    }
-
-    @Test
-    fun test_mappings_value_class_value_to_primitive_prop() {
-        class FrDto {
-            var age: Age? = null
-        }
-
-        class ToDto {
-            var age: Long? = null
-        }
-
-        val from = FrDto().apply { age = Age(10) }
-        val mapper = LaMapper.autoMapper<FrDto, ToDto>()
-        val res = mapper.transform(from)
-        assertEquals(10, res.age)
-
-        val mapper2 = LaMapper.autoMapper<ToDto, FrDto>()
-        val res2 = mapper2.transform(res)
-        assertEquals(Age(10), res2.age)
-    }
-
-    @Test
-    fun test_mappings_value_class_value_to_value_string() {
-        class FrDto(val age: Age)
-        class ToDto(val age: AgeS)
-
-        val from = FrDto(age = Age(10))
-        val mapper = LaMapper.autoMapper<FrDto, ToDto>()
-        val res = mapper.transform(from)
-        assertEquals(AgeS("10"), res.age)
-
-        val mapper2 = LaMapper.autoMapper<ToDto, FrDto>()
-        val res2 = mapper2.transform(res)
-        assertEquals(Age(10), res2.age)
-    }
-
-    @Test
-    fun test_mappings_value_class_value_to_value() {
-        class FrDto(val age: Age)
-        class ToDto(val age: AgeX)
-
-        val from = FrDto(age = Age(10))
-        val mapper = LaMapper.autoMapper<FrDto, ToDto>()
-        val res = mapper.transform(from)
-        assertEquals(AgeX(10), res.age)
-
-        val mapper2 = LaMapper.autoMapper<ToDto, FrDto>()
-        val res2 = mapper2.transform(res)
-        assertEquals(Age(10), res2.age)
-    }
-
-    @JvmInline
-    value class AgeUInt(val value: UInt) {
-        override fun toString() = "AgeUInt($value)"
-    }
-
-    @JvmInline
-    value class AgeUByte(val age: UByte) {
-        override fun toString() = "AgeUByte($age)"
-    }
-
-    @Test
-    fun test_mappings_value_class_unumber() {
-        class FrDto(val age: AgeUInt)
-        class ToDto(val age: AgeUByte)
-
-        val from = FrDto(age = AgeUInt(10u))
-        val mapper = LaMapper.autoMapper<FrDto, ToDto>()
-        val res = mapper.transform(from)
-        assertEquals(AgeUByte(10u), res.age)
-
-        val mapper2 = LaMapper.autoMapper<ToDto, FrDto>()
-        val res2 = mapper2.transform(res)
-        assertEquals(AgeUInt(10u), res2.age)
     }
 
     private fun assertEqBigDecimal(expectedAsStr: String, value: BigDecimal) {

@@ -1,0 +1,56 @@
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+/**
+ * @author Augustus
+ * created on 2022.11.21
+ */
+public class StructJv {
+
+
+    public static class Test1Pojo {
+        public String field1;
+        private String field2;
+        private String prop1 = "prop1";
+        private String prop2;
+        public String prop3;
+        @NotNull private String prop4 = "prop4";
+        @Nullable private String prop5;
+        private String wrong1x;
+        private String wrong2;
+
+        public String getProp1() { return prop1; }
+        public String getProp2() { return prop2; }
+        public void setProp2(String value) { prop2 = value; }
+        public String getProp3() { return prop3; }
+        public void setProp3(String value) { prop3 = value; }
+
+        @NotNull public String getProp4() {return prop4;}
+        public void setProp4(@NotNull String prop4) {this.prop4 = prop4;}
+        @Nullable public String getProp5() {return prop5;}
+        public void setProp5(@Nullable String prop5) {this.prop5 = prop5;}
+
+        // wrong getter (mismatch field and function names)
+        public String getWrong1() {return wrong1x;}
+        public void setWrong1(String wrong1) {this.wrong1x = wrong1; }
+
+        // wrong getter (mismatch field and function types)
+        @Nullable public Integer getWrong2() {return wrong2 == null ? null : Integer.parseInt(wrong2);}
+        public void setWrong2(Integer wrong2) {this.wrong2 = wrong2 == null ? null : String.valueOf(wrong2);}
+
+        // not setters
+        public String retrieveField2() { return field2; }
+        public void assignField2(String value) { field2 = value; }
+    }
+
+    static class Test2PojoConstr {
+        private final String prop1;
+
+        public Test2PojoConstr(String prop1) {
+            this.prop1 = prop1;
+        }
+
+        public String getProp1() { return prop1; }
+    }
+
+}

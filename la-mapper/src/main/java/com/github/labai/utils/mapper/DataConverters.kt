@@ -1,0 +1,255 @@
+/*
+The MIT License (MIT)
+
+Copyright (c) 2022 Augustus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+package com.github.labai.utils.mapper
+
+import com.github.labai.utils.convert.IConverterResolver
+import com.github.labai.utils.convert.ITypeConverter
+import com.github.labai.utils.convert.LaConvertException
+import com.github.labai.utils.mapper.LaMapper.ConverterConfig
+import java.math.BigInteger
+import kotlin.reflect.KClass
+import kotlin.reflect.KProperty1
+import kotlin.reflect.KType
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.primaryConstructor
+
+/**
+ * @author Augustus
+ *         created on 2023.01.26
+ */
+internal class DataConverters(
+    private val laConverterRegistry: IConverterResolver,
+    private val converterConfig: ConverterConfig,
+) {
+    private val unumberConverterResolver = KotlinUNumberConverterResolver(laConverterRegistry)
+
+    companion object {
+        internal val noConvertConverter: ConvFn = ITypeConverter { it }
+    }
+
+    fun <Fr, To> getConverter(sourceType: KProperty1<Fr, *>, targetType: KProperty1<To, *>): ConvFn? {
+        val sourceKlass: KClass<*> = (sourceType.returnType.classifier as KClass<*>)
+        val targetKlass: KClass<*> = (targetType.returnType.classifier as KClass<*>)
+        return getConverter(sourceKlass, targetKlass) { "sourceField=${sourceType.name} targetField=${targetType.name}" }
+    }
+
+    fun <To> getConverter(sourceType: KType, targetType: KProperty1<To, *>): ConvFn? {
+        val sourceKlass: KClass<*> = (sourceType.classifier as KClass<*>)
+        val targetKlass: KClass<*> = (targetType.returnType.classifier as KClass<*>)
+        println("conv sourceType=${sourceType} $sourceKlass targetField=${targetType.name}")
+        return getConverter(sourceKlass, targetKlass) { "sourceType=${sourceType} targetField=${targetType.name}" }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun getConverter(sourceKlass: KClass<*>, targetKlass: KClass<*>, errorDetails: (() -> String)? = null): ConvFn? {
+        val convFn = getBaseConverter(sourceKlass, targetKlass)
+        if (convFn != null)
+            return convFn
+
+        if (converterConfig.autoConvertValueClass) {
+            // for value classes try more combination (value to/from simple)
+            val sourceUnwrapped = getCustomUnwrappedTypeOrNull(sourceKlass)
+            if (sourceUnwrapped != null) {
+                val fn = getBaseConverter(sourceUnwrapped, targetKlass)
+                if (fn != null)
+                    return wrapSourceValueClassConverter(sourceKlass as KClass<Any>, fn)
+            }
+
+            val targetUnwrapped = getCustomUnwrappedTypeOrNull(targetKlass)
+            if (targetUnwrapped != null && targetUnwrapped != String::class) { // laConverter can convert anything to String. Exclude this case for value class
+                val fn = getBaseConverter(sourceKlass, targetUnwrapped)
+                if (fn != null)
+                    return wrapTargetValueClassConverter(targetKlass as KClass<Any>, fn)
+            }
+
+            if (converterConfig.autoConvertValueValue) {
+                if (sourceUnwrapped != null && targetUnwrapped != null) {
+                    val fn = getBaseConverter(sourceUnwrapped, targetUnwrapped)
+                    if (fn != null)
+                        return wrapSourceAndTargetValueClassConverter(sourceKlass as KClass<Any>, targetKlass as KClass<Any>, fn)
+                }
+            }
+        }
+
+        throw LaConvertException("Convert case is not defined (targetType=$sourceKlass sourceType=$targetKlass ${errorDetails?.invoke() ?: ""})")
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Any> convertValue(value: Any?, targetKlass: KClass<T>): T? {
+        if (value == null)
+            return convertNull(targetKlass) as T?
+        val convFn = getConverter(value::class, targetKlass)
+        return convFn.convertVal(value) as T?
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun getBaseConverter(sourceKlass: KClass<*>, targetKlass: KClass<*>): ConvFn? {
+        if (sourceKlass == targetKlass)
+            return noConvertConverter
+        try {
+            val convFn = laConverterRegistry.getConverter(sourceKlass.java, targetKlass.java) as ConvFn?
+            if (convFn != null)
+                return convFn
+        } catch (e: LaConvertException) {
+            // continue
+        }
+        return unumberConverterResolver.getKConverter(sourceKlass, targetKlass)
+    }
+
+    private fun wrapSourceValueClassConverter(klass: KClass<Any>, convFn: ConvFn): ConvFn? {
+        val mainProp = klass.memberProperties.singleOrNull() ?: return null
+        return ITypeConverter { convFn.convert(mainProp.get(it as Any)) }
+    }
+
+    private fun wrapTargetValueClassConverter(klass: KClass<Any>, convFn: ConvFn): ConvFn? {
+        val mainConstr = klass.primaryConstructor ?: return null
+        return ITypeConverter { convFn.convert(it)?.let { res -> mainConstr.call(res) } }
+    }
+
+    private fun wrapSourceAndTargetValueClassConverter(srcKlass: KClass<Any>, trgKlass: KClass<Any>, convFn: ConvFn): ConvFn? {
+        val mainProp = srcKlass.memberProperties.singleOrNull() ?: return null
+        val mainConstr = trgKlass.primaryConstructor ?: return null
+        return ITypeConverter { convFn.convert(mainProp.get(it as Any))?.let { res -> mainConstr.call(res) } }
+    }
+
+    private fun getCustomUnwrappedTypeOrNull(mainKlass: KClass<*>): KClass<*>? {
+        if (!mainKlass.isValue)
+            return null
+        return mainKlass.primaryConstructor?.parameters?.singleOrNull()?.type?.classifier as KClass<*>?
+    }
+
+    private fun convertNull(klass: KClass<*>): Any? {
+        if (klass.java == String::class.java)
+            return if (converterConfig.autoConvertNullToString) "" else null
+        if (!converterConfig.autoConvertNullForPrimitive)
+            return null
+        when (klass) {
+            Boolean::class -> return false
+            Char::class -> return '\u0000'
+            Byte::class -> return 0
+            UByte::class -> return 0
+            Short::class -> return 0
+            UShort::class -> return 0
+            Int::class -> return 0
+            UInt::class -> return 0
+            Long::class -> return 0L
+            ULong::class -> return 0L
+            Float::class -> return 0.0f
+            Double::class -> return 0.0
+        }
+        return null
+    }
+
+    fun convertNull(targetType: KType): Any? {
+        if (targetType.isMarkedNullable)
+            return null
+        val klass = targetType.classifier
+        if (klass !is KClass<*>)
+            return null
+        return convertNull(klass)
+    }
+}
+
+// UByte, UShort, UInt, ULong
+internal class KotlinUNumberConverterResolver(
+    private val laConverterRegistry: IConverterResolver,
+) {
+
+    fun <Fr : Any, To : Any> getKConverter(sourceKType: KClass<Fr>, targetKType: KClass<To>): ConvFn? {
+        val resultKlass: KClass<out Any>?
+        val resultConv: ((Any?) -> Any?)?
+        when (targetKType) {
+            UByte::class -> {
+                resultKlass = Short::class
+                resultConv = { it -> (it as Short).toUByte() }
+            }
+
+            UShort::class -> {
+                resultKlass = Int::class
+                resultConv = { (it as Int).toUShort() }
+            }
+
+            UInt::class -> {
+                resultKlass = Long::class
+                resultConv = { (it as Long).toUInt() }
+            }
+
+            ULong::class -> {
+                resultKlass = BigInteger::class
+                resultConv = { (it as BigInteger).toString().toULong() }
+            }
+
+            else -> {
+                resultKlass = targetKType
+                resultConv = { it }
+            }
+        }
+
+        when (sourceKType) {
+            UByte::class -> {
+                val convFn = getLaConverter(Short::class, resultKlass)
+                if (convFn != null)
+                    return ITypeConverter { resultConv(convFn.convert((it as UByte).toShort())) }
+            }
+
+            UShort::class -> {
+                val convFn = getLaConverter(Int::class, resultKlass)
+                if (convFn != null) {
+                    return ITypeConverter { resultConv(convFn.convert((it as UShort).toInt())) }
+                }
+            }
+
+            UInt::class -> {
+                val convFn = getLaConverter(Long::class, resultKlass)
+                if (convFn != null)
+                    return ITypeConverter { resultConv(convFn.convert((it as UInt).toLong())) }
+            }
+
+            ULong::class -> {
+                val convFn = getLaConverter(BigInteger::class, resultKlass)
+                if (convFn != null)
+                    return ITypeConverter { resultConv(convFn.convert((it as ULong).toString().toBigInteger())) }
+            }
+
+            else -> {
+                if (resultKlass != targetKType) {
+                    val convFn = getLaConverter(sourceKType, resultKlass)
+                    if (convFn != null)
+                        return ITypeConverter { resultConv(convFn.convert(it)) }
+                }
+            }
+        }
+
+        return null
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun getLaConverter(sourceKlass: KClass<*>, targetKlass: KClass<*>): ConvFn? {
+        return try {
+            return laConverterRegistry.getConverter(sourceKlass.java, targetKlass.java) as ConvFn?
+        } catch (e: LaConvertException) {
+            null
+        }
+    }
+}

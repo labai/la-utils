@@ -1,11 +1,11 @@
 import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.KotlinUNumberConverterResolver
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.fail
+import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.math.BigInteger
-import kotlin.test.fail
 
 /**
  * @author Augustus
@@ -72,9 +72,9 @@ class UNumberConverterTest {
         val converted = converter.convert(from)
         val msg = "failed conv " + from.javaClass + " to " + converted!!::class + " (expected " + expected::class + ")"
         if (expected.javaClass == BigDecimal::class.java) {
-            assertTrue(msg, (converted as BigDecimal).compareTo(expected as BigDecimal) == 0)
+            assertTrue((converted as BigDecimal).compareTo(expected as BigDecimal) == 0, msg)
         } else {
-            assertEquals(msg, converted, expected)
+            assertEquals(converted, expected, msg)
         }
     }
 }
