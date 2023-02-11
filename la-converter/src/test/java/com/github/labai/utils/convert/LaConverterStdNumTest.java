@@ -1,14 +1,14 @@
 package com.github.labai.utils.convert;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author Augustus
@@ -45,9 +45,9 @@ public class LaConverterStdNumTest {
         Object converted = converter.convert(from);
         String msg = "failed conv " + from.getClass() + " to " + converted.getClass() + " (expected " + expected.getClass() + ")";
         if (expected.getClass() == BigDecimal.class) {
-            assertTrue(msg, ((BigDecimal)converted).compareTo((BigDecimal) expected) == 0);
+            assertTrue(((BigDecimal)converted).compareTo((BigDecimal) expected) == 0, msg);
         } else {
-            assertEquals(msg, converted, expected);
+            assertEquals(converted, expected, msg);
         }
     }
 }

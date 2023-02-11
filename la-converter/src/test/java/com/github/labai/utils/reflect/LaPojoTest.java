@@ -1,7 +1,7 @@
 package com.github.labai.utils.reflect;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -22,6 +22,6 @@ public class LaPojoTest {
 		Map<String, Field> map1 = LaPojo.getCachedFieldsMap(pojo);
 		Map<String, Field> map2 = LaPojo.getCachedFieldsMap(pojo);
 
-		Assert.assertSame(map1.get("aaa"), map2.get("aaa"));
+		Assertions.assertSame(map1.get("aaa"), map2.get("aaa"));
 	}
 }

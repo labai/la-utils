@@ -1,7 +1,6 @@
 package com.github.labai.utils.reflect;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
 import java.sql.Timestamp;
@@ -17,7 +16,8 @@ import java.util.Map;
 import java.util.TimeZone;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * @author Augustus
@@ -61,9 +61,9 @@ public class LaReflectTest {
 		LaReflect.assignValue(pojo, fields.get("int2"), null);
 		LaReflect.assignValue(pojo, fields.get("long1"), null);
 		LaReflect.assignValue(pojo, fields.get("long2"), null);
-		Assert.assertNull(pojo.int1);
+		assertNull(pojo.int1);
 		assertEquals(0, pojo.int2);
-		Assert.assertNull(pojo.long1);
+		assertNull(pojo.long1);
 		assertEquals(0, pojo.long2);
 	}
 

@@ -86,7 +86,7 @@ public class LaConverterRegistry implements IConverterResolver {
 
         // any type can be converted to String
         if (targetType == String.class) {
-            return value -> (To) String.valueOf(value);
+            return value -> (To) (value == null ? null : String.valueOf(value));
         }
 
         // common converters

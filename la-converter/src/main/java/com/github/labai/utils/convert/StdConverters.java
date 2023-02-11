@@ -388,8 +388,10 @@ class StdConverters {
             if (fromClass == Instant.class)
                 return value -> (Instant) value;
             if (Date.class.isAssignableFrom(fromClass))
-                return value -> ConvDate.dateToInstant((Date) value);
+                return value -> value == null ? null : ConvDate.dateToInstant((Date) value);
             return value -> {
+                if (value == null)
+                    return null;
                 ZonedDateTime zdtm = ConvDate.convToZonedDateTime(value);
                 if (zdtm == null)
                     return null;
@@ -399,8 +401,10 @@ class StdConverters {
 
         static <T> ITypeConverter<T, Date> converterToDate(Class<T> fromClass) {
             if (fromClass == Date.class)
-                return value -> new Date(((Date) value).getTime()); // new Date clean copy (e.g. w/o nanos?)
+                return value -> value == null ? null : new Date(((Date) value).getTime()); // new Date clean copy (e.g. w/o nanos?)
             return value -> {
+                if (value == null)
+                    return null;
                 Instant instant = ConvDate.convToInstant(value);
                 if (instant == null)
                     return null;
