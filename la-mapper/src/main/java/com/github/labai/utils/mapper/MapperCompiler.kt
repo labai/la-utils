@@ -55,8 +55,8 @@ class MapperCompiler(laMapper: LaMapper) {
 
     class DynamicConverter(laMapper: LaMapper) {
         private val dataConverters: DataConverters = laMapper.dataConverters
-        fun convertValue(value: Any?, targetKlass: KClass<*>): Any? {
-            return dataConverters.convertValue(value, targetKlass)
+        fun convertValue(value: Any?, targetKlass: KClass<*>, nullable: Boolean): Any? {
+            return dataConverters.convertValue(value, targetKlass, nullable)
         }
     }
 
@@ -194,7 +194,7 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
                 s = "convFnArr[${convFnArr.size - 1}].convert($s)"
             } else if (mm.manualMapper.sourceType == null) {
                 // convert on the fly
-                s = "dynamicConverter.convertValue($s, ${getKTypeClassString(mm.targetProp.returnType)})"
+                s = "dynamicConverter.convertValue($s, ${getKTypeClassString(mm.targetProp.returnType)}, ${mm.targetProp.returnType.isMarkedNullable})"
             }
             s += addAsTypeAndElvis(mm.targetProp.returnType, true)
 
@@ -223,7 +223,7 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
                 wasConverted = true
             } else if (pm.manualMapper != null && pm.manualMapper.sourceType == null) {
                 // convert on the fly
-                s = "dynamicConverter.convertValue($s, ${getKTypeClassString(pm.param.type)})"
+                s = "dynamicConverter.convertValue($s, ${getKTypeClassString(pm.param.type)}, ${pm.param.type.isMarkedNullable})"
                 wasConverted = true
             }
             s += addAsTypeAndElvis(pm.param.type, wasConverted)

@@ -96,9 +96,9 @@ internal class DataConverters(
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun <T : Any> convertValue(value: Any?, targetKlass: KClass<T>): T? {
+    fun <T : Any> convertValue(value: Any?, targetKlass: KClass<T>, nullable: Boolean = true): T? {
         if (value == null)
-            return convertNull(targetKlass) as T?
+            return if (nullable) null else convertNull(targetKlass) as T?
         val convFn = getConverter(value::class, targetKlass)
         return convFn.convertVal(value) as T?
     }

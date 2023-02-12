@@ -64,7 +64,6 @@ import kotlin.reflect.jvm.reflect
 class LaMapper(
     laConverterRegistry: IConverterResolver,
 ) {
-    private val logger = LoggerFactory.getLogger(LaMapper::class.java)
 
     @TestOnly
     internal constructor(laConverterRegistry: IConverterResolver, config: ConverterConfig) : this(laConverterRegistry) {
@@ -162,7 +161,7 @@ class LaMapper(
     ) : AutoMapper<Fr, To> {
 
         internal lateinit var struct: MappedStruct<Fr, To>
-//        private var allArgsNullsTemplate: Array<Any?>? = null
+        private var allArgsNullsTemplate: Array<Any?>? = null
         private val isInitialized = AtomicBoolean(false)
         private var needToCompile = config.tryCompile
         private var counter = 0
@@ -172,9 +171,9 @@ class LaMapper(
             if (isInitialized.compareAndSet(false, true)) {
                 struct = MappedStruct(sourceType, targetType, manualMappers, dataConverters, config)
 
-//                if (struct.targetConstructor != null && struct.paramMappers.size == struct.targetConstructor!!.parameters.size) {
-//                    allArgsNullsTemplate = arrayOfNulls(struct.targetConstructor!!.parameters.size)
-//                }
+                if (struct.targetConstructor != null && struct.paramMappers.size == struct.targetConstructor!!.parameters.size) {
+                    allArgsNullsTemplate = arrayOfNulls(struct.targetConstructor!!.parameters.size)
+                }
                 // cleanup
                 manualMappers = mapOf()
             }
@@ -199,14 +198,14 @@ class LaMapper(
 
             val target: To = if (struct.targetConstructor == null) {
                 targetType.createInstance()
-//            } else if (allArgsNullsTemplate != null) {
-//                // args as array are slightly faster
-//                val paramArr = allArgsNullsTemplate!!.clone()
-//                var i = 0
-//                for (param in struct.paramMappers) {
-//                    paramArr[i++] = param.mapParam(from)
-//                }
-//                struct.targetConstructor!!.call(*paramArr)
+            } else if (allArgsNullsTemplate != null) {
+                // args as array are slightly faster
+                val paramArr = allArgsNullsTemplate!!.clone()
+                var i = 0
+                for (param in struct.paramMappers) {
+                    paramArr[i++] = param.mapParam(from)
+                }
+                struct.targetConstructor!!.call(*paramArr)
             } else {
                 val params = struct.paramMappers.associate {
                     it.param to it.mapParam(from)
