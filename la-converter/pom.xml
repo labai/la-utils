@@ -38,6 +38,16 @@
 
     <dependencies>
 
+        <!-- classes from shade jar will be included into la-converter.jar -->
+        <!-- to use in development - mvn compile and install separately -->
+        <dependency>
+            <groupId>com.github.labai.utils</groupId>
+            <artifactId>la-converter-shade</artifactId>
+            <version>0.0.1</version>
+            <optional>true</optional>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- TEST SCOPE -->
 
         <dependency>
@@ -66,6 +76,7 @@
             <groupId>com.github.labai</groupId>
             <artifactId>deci</artifactId>
             <version>0.0.1</version>
+            <optional>true</optional>
             <scope>provided</scope>
         </dependency>
 
@@ -91,6 +102,28 @@
                 <configuration>
                     <reuseForks>false</reuseForks>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.4.2</version>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <finalName>${project.artifactId}-${project.version}</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>trigger-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <plugin>
