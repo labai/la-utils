@@ -1,10 +1,8 @@
 import com.github.labai.utils.mapper.AutoMapper
-import com.github.labai.utils.mapper.LaMapper
-import com.github.labai.utils.mapper.LaMapper.AutoMapperImpl
-import com.github.labai.utils.mapper.MapperCompiler
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.math.BigDecimal
 import kotlin.reflect.KProperty1
 
@@ -12,79 +10,76 @@ import kotlin.reflect.KProperty1
  * @author Augustus
  *         created on 2022.11.16
  *
- *  a big pojo
+ *  a big pojo...
  */
+@Suppress("unused")
 class ComplexPojoTest {
 
-    @Test
-    fun test_assign() {
+    @ParameterizedTest
+    @ValueSource(strings = ["default", "reflect", "compile"])
+    fun test_assign(engine: String) {
+        val mapper = getMapper<FrX, ToX>(engine) {
+            ToX::f02i from FrX::f01i
+            ToX::f02in from FrX::f01in
+            ToX::f02s from FrX::f01s
+            ToX::f02sn from FrX::f01sn
+            ToX::f02d from  FrX::f01d
+
+            ToX::f04i from { it.f01i + 1 }
+            ToX::f04in from { it.f01in?.plus(1) }
+            ToX::f04s from { it.f01s + "x" }
+            ToX::f04sn from { it.f01sn?.plus("x") }
+            ToX::f04d from { it.f01d.add(1.toBigDecimal()) }
+
+            ToX::f08i from FrX::f01i
+            ToX::f08in from FrX::f01in
+            ToX::f08s from FrX::f01s
+            ToX::f08sn from FrX::f01sn
+            ToX::f08d from  FrX::f01d
+
+            ToX::f09i from { it.f01i + 1 }
+            ToX::f09in from { it.f01in?.plus(1) }
+            ToX::f09s from { it.f01s + "x" }
+            ToX::f09sn from { it.f01sn?.plus("x") }
+            ToX::f09d from { it.f01d.add(1.toBigDecimal()) }
+
+            ToX::f10l from FrX::f05i
+            ToX::f10ln from FrX::f05in
+            ToX::f10d from FrX::f05s
+            ToX::f10dn from FrX::f05sn
+            ToX::f10s from  FrX::f05d
+
+            ToX::f11l from { it.f05i + 1 }
+            ToX::f11ln from { it.f05in?.plus(1) }
+            ToX::f11d from { it.f05s + "" }
+            ToX::f11dn from { it.f05sn?.plus("") }
+            ToX::f11s from  { it.f05d.add(1.toBigDecimal()) }
+
+            ToX::f12l from FrX::f05i
+            ToX::f12ln from FrX::f05in
+            ToX::f12d from FrX::f05s
+            ToX::f12dn from FrX::f05sn
+            ToX::f12s from  FrX::f05d
+
+            ToX::f13l from { it.f05i + 1 }
+            ToX::f13ln from { it.f05in?.plus(1) }
+            ToX::f13d from { it.f05s + "" }
+            ToX::f13dn from { it.f05sn?.plus("") }
+            ToX::f13s from  { it.f05d.add(1.toBigDecimal()) }
+
+            ToX::f15i from FrX::f14in
+            ToX::f16i from { it.f14in }
+
+            ToX::f17i from FrX::f14in
+            ToX::f18i from { it.f14in }
+        }
+
         test_mapper(mapper)
-
-        val compiledMapper = MapperCompiler(LaMapper.global).compiledMapper(mapper as AutoMapperImpl)!!
-        test_mapper(compiledMapper)
-    }
-
-    val mapper = LaMapper.autoMapper<FrX, ToX>() {
-        ToX::f02i from FrX::f01i
-        ToX::f02in from FrX::f01in
-        ToX::f02s from FrX::f01s
-        ToX::f02sn from FrX::f01sn
-        ToX::f02d from  FrX::f01d
-
-        ToX::f04i from { it.f01i + 1 }
-        ToX::f04in from { it.f01in?.plus(1) }
-        ToX::f04s from { it.f01s + "x" }
-        ToX::f04sn from { it.f01sn?.plus("x") }
-        ToX::f04d from { it.f01d.add(1.toBigDecimal()) }
-
-        ToX::f08i from FrX::f01i
-        ToX::f08in from FrX::f01in
-        ToX::f08s from FrX::f01s
-        ToX::f08sn from FrX::f01sn
-        ToX::f08d from  FrX::f01d
-
-        ToX::f09i from { it.f01i + 1 }
-        ToX::f09in from { it.f01in?.plus(1) }
-        ToX::f09s from { it.f01s + "x" }
-        ToX::f09sn from { it.f01sn?.plus("x") }
-        ToX::f09d from { it.f01d.add(1.toBigDecimal()) }
-
-        ToX::f10l from FrX::f05i
-        ToX::f10ln from FrX::f05in
-        ToX::f10d from FrX::f05s
-        ToX::f10dn from FrX::f05sn
-        ToX::f10s from  FrX::f05d
-
-        ToX::f11l from { it.f05i + 1 }
-        ToX::f11ln from { it.f05in?.plus(1) }
-        ToX::f11d from { it.f05s + "" }
-        ToX::f11dn from { it.f05sn?.plus("") }
-        ToX::f11s from  { it.f05d.add(1.toBigDecimal()) }
-
-        ToX::f12l from FrX::f05i
-        ToX::f12ln from FrX::f05in
-        ToX::f12d from FrX::f05s
-        ToX::f12dn from FrX::f05sn
-        ToX::f12s from  FrX::f05d
-
-        ToX::f13l from { it.f05i + 1 }
-        ToX::f13ln from { it.f05in?.plus(1) }
-        ToX::f13d from { it.f05s + "" }
-        ToX::f13dn from { it.f05sn?.plus("") }
-        ToX::f13s from  { it.f05d.add(1.toBigDecimal()) }
-
-        ToX::f15i from FrX::f14in
-        ToX::f16i from { it.f14in }
-
-        ToX::f17i from FrX::f14in
-        ToX::f18i from { it.f14in }
     }
 
     private fun test_mapper(mapper: AutoMapper<FrX, ToX>) {
         val frx = FrX()
         val tox = mapper.transform(frx)
-
-        // println("res=${gson.toJson(tox)}")
 
         val equalsAssertList = mapOf<KProperty1<ToX, Any?>, Any?>(
             ToX::f01i to 1,

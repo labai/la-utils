@@ -20,7 +20,8 @@ internal object PerfHelper {
                 this[n.key]!!.add(n.value)
             }
         }
-        fun getAverages() : Map<String, Deci> {
+
+        fun getAverages(): Map<String, Deci> {
             return this.map { it.key to it.value.average().toBigDecimal().deci.round(0) }.toMap()
         }
     }
@@ -62,12 +63,21 @@ internal object PerfHelper {
         return time
     }
 
-    fun <Fr, To> runForList(list: List<Fr>, repeat: Int, createToFn: (fr: Fr) -> To, mapperFn: (fr: Fr) -> To, assignFn: (fr: Fr) -> To, compiledFn: (fr: Fr) -> To): Map<String, Long>  {
+    private fun <Fr, To> runForList(
+        list: List<Fr>,
+        repeat: Int,
+        createToFn: (fr: Fr) -> To,
+        mapperFn: (fr: Fr) -> To,
+        assignFn: (fr: Fr) -> To,
+        compiledFn: (fr: Fr) -> To,
+        reflectionFn: (fr: Fr) -> To,
+    ): Map<String, Long> {
         val stats = mutableMapOf<String, Long>()
         stats["pojo"] = runPojoCopy(list, repeat, createToFn)
         stats["asgn"] = runAssign(list, repeat, assignFn)
         stats["mapr"] = runMapper(list, repeat, mapperFn)
         stats["comp"] = runMapper(list, repeat, compiledFn)
+        stats["refl"] = runMapper(list, repeat, reflectionFn)
         return stats
     }
 
@@ -79,7 +89,14 @@ internal object PerfHelper {
         return list
     }
 
-    fun <Fr, To> testForClasses(createFromFn: (iteration: Int) -> Fr, createToFn: (fr: Fr) -> To, mapperFn: (fr: Fr) -> To, assignFn: (fr: Fr) -> To, compiledFn: (fr: Fr) -> To) {
+    fun <Fr, To> testForClasses(
+        createFromFn: (iteration: Int) -> Fr,
+        createToFn: (fr: Fr) -> To,
+        mapperFn: (fr: Fr) -> To,
+        assignFn: (fr: Fr) -> To,
+        compiledFn: (fr: Fr) -> To,
+        reflectionFn: (fr: Fr) -> To,
+    ) {
         val listSize = 10000
         val repeatCount = 100
 
@@ -87,11 +104,11 @@ internal object PerfHelper {
 
         println("Warmup")
         // warmup
-        runForList(list, repeatCount, createToFn, mapperFn, assignFn, compiledFn)
+        runForList(list, repeatCount, createToFn, mapperFn, assignFn, compiledFn, reflectionFn)
 
         val stats = Stats()
         for (i in 1..4) {
-            val st = runForList(list, repeatCount, createToFn, mapperFn, assignFn, compiledFn)
+            val st = runForList(list, repeatCount, createToFn, mapperFn, assignFn, compiledFn, reflectionFn)
             println("Iteration $i: $st")
             stats.addStats(st)
         }

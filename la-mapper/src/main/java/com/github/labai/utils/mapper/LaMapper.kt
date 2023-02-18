@@ -26,6 +26,9 @@ package com.github.labai.utils.mapper
 import com.github.labai.utils.convert.IConverterResolver
 import com.github.labai.utils.convert.ITypeConverter
 import com.github.labai.utils.convert.LaConverterRegistry
+import com.github.labai.utils.hardreflect.LaHardReflect
+import com.github.labai.utils.hardreflect.PropReader
+import com.github.labai.utils.hardreflect.PropWriter
 import com.github.labai.utils.mapper.LaMapper.ConverterConfig
 import com.github.labai.utils.mapper.LaMapper.ManualMapper
 import org.jetbrains.annotations.TestOnly
@@ -47,6 +50,7 @@ import kotlin.reflect.full.declaredFunctions
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.ExperimentalReflectionOnLambdas
+import kotlin.reflect.jvm.javaMethod
 import kotlin.reflect.jvm.reflect
 
 /**
@@ -78,17 +82,19 @@ class LaMapper(
     private val mapperCompiler = MapperCompiler(this)
 
     // ...configurable only for tests yet
-    internal data class ConverterConfig (
+    internal data class ConverterConfig(
         internal val autoConvertNullForPrimitive: Boolean = true, // do auto-convert null to 0 for non-nullable Numbers and Boolean
         internal val autoConvertNullToString: Boolean = true, // do auto-convert null to "" for non-nullable Strings
         internal val autoConvertValueClass: Boolean = true, // convert value class to/from primitives
-        internal val autoConvertValueValue: Boolean = true, // convert between different value classes - even if we can, it may violate the idea of value classes
-        internal val tryCompile: Boolean = false, // try to compile
-        internal val startCompileAfterIterations: Int = 1000, // start to compile after n iterations
+        internal val autoConvertValueValue: Boolean = true, // convert between different value classes - even if we can, it may violate idea of value classes
+        internal val tryCompile: Boolean = false, // try to kotlin-compile
+        internal val partiallyCompile: Boolean = true, // try to compile partially (to jvm)
+        internal val startCompileAfterIterations: Int = 1000, // start to kotlin-compile after n iterations
         internal val visibilities: Set<KVisibility> = setOf(PUBLIC, INTERNAL),
     )
 
     companion object {
+        internal val logger = LoggerFactory.getLogger(LaMapper::class.java)
         val global = LaMapper(LaConverterRegistry.global)
 
         inline fun <reified Fr : Any, reified To : Any> copyFrom(
@@ -155,14 +161,15 @@ class LaMapper(
     }
 
     internal inner class AutoMapperImpl<Fr : Any, To : Any>(
-        internal val sourceType: KClass<Fr>,
-        internal val targetType: KClass<To>,
+        private val sourceType: KClass<Fr>,
+        private val targetType: KClass<To>,
         private var manualMappers: Map<String, ManualMapper<Fr>> = mapOf(),
     ) : AutoMapper<Fr, To> {
 
         internal lateinit var struct: MappedStruct<Fr, To>
         private var allArgsNullsTemplate: Array<Any?>? = null
         private val isInitialized = AtomicBoolean(false)
+
         private var needToCompile = config.tryCompile
         private var counter = 0
         private var compiledMapper: AutoMapper<Fr, To>? = null
@@ -174,6 +181,7 @@ class LaMapper(
                 if (struct.targetConstructor != null && struct.paramMappers.size == struct.targetConstructor!!.parameters.size) {
                     allArgsNullsTemplate = arrayOfNulls(struct.targetConstructor!!.parameters.size)
                 }
+
                 // cleanup
                 manualMappers = mapOf()
             }
@@ -183,12 +191,14 @@ class LaMapper(
             init()
             if (needToCompile && ++counter > config.startCompileAfterIterations) {
                 synchronized(this) {
-                    CompilerQueue.addTask(mapperCompiler, this.struct) { compiled ->
-                        if (compiled != null) {
-                            compiledMapper = compiled
+                    if (needToCompile) {
+                        CompilerQueue.addTask(mapperCompiler, this.struct) { compiled ->
+                            if (compiled != null) {
+                                compiledMapper = compiled
+                            }
                         }
+                        needToCompile = false
                     }
-                    needToCompile = false
                 }
             }
 
@@ -244,7 +254,6 @@ class LaMapper(
     ) {
         internal var convFn: ConvFn? = null
         internal var targetType: KType? = null
-
     }
 
     open class MapperBuilder<Fr, To> {
@@ -309,10 +318,10 @@ internal class MappedStruct<Fr : Any, To : Any>(
     ) {
         private val paramKlass = param.type.classifier as KClass<*>
         internal fun mapParam(from: Fr): Any? {
-            val value = if (manualMapper != null) {
-                manualMapper.mapper.invoke(from)
-            } else if (sourceProp != null) {
+            val value = if (sourceProp != null) {
                 sourceProp.getValue(from)
+            } else if (manualMapper != null) {
+                manualMapper.mapper.invoke(from)
             } else {
                 throw NullPointerException("ParamMapper must have manualMapper or sourceProp not null")
             }
@@ -324,18 +333,45 @@ internal class MappedStruct<Fr : Any, To : Any>(
         }
     }
 
-
-    internal class PropOrGetter<T>(
+    internal class PropOrGetter<T> (
         val name: String,
-        val prop: KProperty1<T, Any?>?,
-        val getter: KFunction<Any?>?, // for java getter functions (getField())
+        private val prop: KProperty1<T, Any?>?,
+        private val getter: KFunction<Any?>?, // for java getter functions (getField())
+        precompile: Boolean = false,
+        sourceClass: KClass<*>,
     ) {
         val returnType
             get(): KType = prop?.returnType ?: getter?.returnType!!
         val klass = returnType.classifier as KClass<*>
+        private val propReader: PropReader?
+
+        init {
+            propReader = if (precompile) {
+                try {
+                    val p = if (prop != null) {
+                        LaHardReflect.createReaderClass(sourceClass.java, prop.name)
+                    } else if (getter != null) {
+                        LaHardReflect.createReaderClass(sourceClass.java, getter.javaMethod)
+                    } else {
+                        throw NullPointerException("One of prop or getter is mandatory")
+                    }
+                    if (p == null) {
+                        LaMapper.logger.debug("Can't precompile reading, use reflection (prop=$name class=$sourceClass)")
+                    }
+                    p
+                } catch (e: Throwable) {
+                    LaMapper.logger.debug("Can't precompile reading, use reflection (prop=$name class=$sourceClass): ${e.message}")
+                    null
+                }
+            } else {
+                null
+            }
+        }
 
         fun getValue(pojo: T): Any? {
-            return if (prop != null) {
+            return if (propReader != null) {
+                propReader.readVal(pojo)
+            } else if (prop != null) {
                 prop.get(pojo)
             } else if (getter != null) {
                 getter.call(pojo)
@@ -343,20 +379,47 @@ internal class MappedStruct<Fr : Any, To : Any>(
                 throw NullPointerException("One of prop or getter is mandatory")
             }
         }
-
     }
 
     internal class PropOrSetter<T>(
         val name: String,
-        val prop: KMutableProperty1<T, Any?>?,
-        val setter: KFunction<*>?,
+        private val prop: KMutableProperty1<T, Any?>?,
+        private val setter: KFunction<*>?,
+        precompile: Boolean = false,
+        targetClass: KClass<*>,
     ) {
         val returnType
             get(): KType = prop?.returnType ?: setter?.parameters?.last()?.type!!
         val klass = returnType.classifier as KClass<*>
+        private val propWriter: PropWriter?
+
+        init {
+            propWriter = if (precompile) {
+                try {
+                    val p = if (prop != null) {
+                        LaHardReflect.createWriterClass(targetClass.java, prop.name)
+                    } else if (setter != null) {
+                        LaHardReflect.createWriterClass(targetClass.java, setter.javaMethod)
+                    } else {
+                        throw NullPointerException("One of prop or getter is mandatory")
+                    }
+                    if (p == null) {
+                        LaMapper.logger.debug("Can't precompile writing, use reflection (prop=$name class=$targetClass)")
+                    }
+                    p
+                } catch (e: Throwable) {
+                    LaMapper.logger.debug("Can't precompile writing, use reflection (prop=$name class=$targetClass): ${e.message}")
+                    null
+                }
+            } else {
+                null
+            }
+        }
 
         fun setValue(pojo: T, value: Any?) {
-            if (prop != null) {
+            if (propWriter != null) {
+                propWriter.writeVal(pojo, value)
+            } else if (prop != null) {
                 prop.set(pojo, value)
             } else if (setter != null) {
                 setter.call(pojo, value)
@@ -371,11 +434,11 @@ internal class MappedStruct<Fr : Any, To : Any>(
         val targetProp: PropOrSetter<To>,
         val convFn: ConvFn?,
     )
+
     internal class PropManualMapper<Fr : Any, To : Any>(
         val targetProp: PropOrSetter<To>,
         val manualMapper: ManualMapper<Fr>,
     )
-
 
     private fun init() {
         val sourcePropsByName: Map<String, PropOrGetter<Fr>> = getSourceMemberProps(sourceType).associateBy { it.name }
@@ -434,12 +497,11 @@ internal class MappedStruct<Fr : Any, To : Any>(
         }
     }
 
-
     private fun getGetterByName(sourceClass: KClass<*>, fieldName: String, type: KType): KFunction<*>? {
         if (fieldName.isEmpty())
             return null
         val fnName = "get" + fieldName[0].uppercaseChar() + fieldName.substring(1)
-        return sourceClass.declaredFunctions.find { f -> f.name == fnName && f.returnType == type}
+        return sourceClass.declaredFunctions.find { f -> f.name == fnName && f.returnType == type }
     }
 
     private fun getSetterByName(sourceClass: KClass<*>, fieldName: String, type: KType): KFunction<*>? {
@@ -447,41 +509,39 @@ internal class MappedStruct<Fr : Any, To : Any>(
             return null
         val fnName = "set" + fieldName[0].uppercaseChar() + fieldName.substring(1)
         return sourceClass.declaredFunctions
-            .find { it.name == fnName && it.parameters.size == 2 && it.parameters.last().type == type}
+            .find { it.name == fnName && it.parameters.size == 2 && it.parameters.last().type == type }
     }
 
     private fun getSourceMemberProps(sourceType: KClass<Fr>): List<PropOrGetter<Fr>> {
         return sourceType.memberProperties
             .mapNotNull {
                 if (it.visibility in config.visibilities)
-                    PropOrGetter(it.name, it, null)
+                    PropOrGetter(it.name, it, null, config.partiallyCompile, sourceType)
                 else {
                     val getter: KFunction<*>? = getGetterByName(sourceType, it.name, it.returnType) // case for java getters
                     if (getter != null && getter.visibility in config.visibilities)
-                        PropOrGetter(it.name, null, getter)
+                        PropOrGetter(it.name, null, getter, config.partiallyCompile, sourceType)
                     else
                         null
                 }
             }
     }
-
 
     private fun getTargetMemberProps(targetType: KClass<To>): List<PropOrSetter<To>> {
         return targetType.memberProperties
             .mapNotNull {
                 @Suppress("UNCHECKED_CAST")
                 if (it.visibility in config.visibilities && it is KMutableProperty1)
-                    PropOrSetter(it.name, it as KMutableProperty1<To, Any?>, null)
+                    PropOrSetter(it.name, it as KMutableProperty1<To, Any?>, null, config.partiallyCompile, targetType)
                 else { // try check case for java setters
                     val setter: KFunction<*>? = getSetterByName(targetType, it.name, it.returnType)
                     if (setter != null && setter.visibility in config.visibilities)
-                        PropOrSetter(it.name, null, setter)
+                        PropOrSetter(it.name, null, setter, config.partiallyCompile, targetType)
                     else
                         null
                 }
             }
     }
-
 
     private fun initPropAutoMappers(
         sourceClass: KClass<Fr>,

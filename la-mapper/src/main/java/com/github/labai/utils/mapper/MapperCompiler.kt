@@ -53,6 +53,14 @@ class MapperCompiler(laMapper: LaMapper) {
     private val logger = LoggerFactory.getLogger(MapperCompiler::class.java)
     private val sourceLogger = LoggerFactory.getLogger("LaMapper-generatedSource")
 
+    companion object {
+        init {
+            // setIdeaIoUseFallback
+            // to avoid warning "Please make sure bin/idea.properties is present in the installation directory"
+            System.setProperty("idea.io.use.nio2", java.lang.Boolean.TRUE.toString())
+        }
+    }
+
     class DynamicConverter(laMapper: LaMapper) {
         private val dataConverters: DataConverters = laMapper.dataConverters
         fun convertValue(value: Any?, targetKlass: KClass<*>, nullable: Boolean): Any? {
@@ -121,6 +129,8 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
     private val struct: MappedStruct<Fr, To>,
 ) {
 
+    private val alphanumRegEx = "^[a-zA-Z][a-zA-Z0-9]*$".toRegex()
+
     // work variables
     private val convFnArr = ArrayList<ConvFn>()
     private val manualMapperArr = ArrayList<ManualFn<Fr>>()
@@ -131,7 +141,6 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
     )
 
     fun generate(): GeneratedSource {
-
         val autoAssigns = generatePropAssign()
         val manualAssigns = generateManualAssign()
         val constrArgs = generateConstrArgs()
@@ -172,10 +181,10 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
             var s = ""
             var wasConverted = false
             if (propMap.convFn == null || propMap.convFn == DataConverters.noConvertConverter) {
-                s += "to.${propMap.targetProp.name} = fr.${propMap.sourceProp.name}"
+                s += "to.${propMap.targetProp.name.safeName()} = fr.${propMap.sourceProp.name.safeName()}"
             } else {
                 convFnArr.add(propMap.convFn)
-                s += "to.${propMap.targetProp.name} = convFnArr[${convFnArr.size - 1}].convert(fr.${propMap.sourceProp.name})"
+                s += "to.${propMap.targetProp.name.safeName()} = convFnArr[${convFnArr.size - 1}].convert(fr.${propMap.sourceProp.name.safeName()})"
                 wasConverted = true
             }
             s += addAsTypeAndElvis(propMap.targetProp.returnType, wasConverted)
@@ -198,7 +207,7 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
             }
             s += addAsTypeAndElvis(mm.targetProp.returnType, true)
 
-            res += "to.${mm.targetProp.name} = $s"
+            res += "to.${mm.targetProp.name.safeName()} = $s"
             res += "\n"
         }
         return res
@@ -214,7 +223,7 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
                 s = "manualMapperArr[${manualMapperArr.size - 1}](fr)"
                 wasConverted = true
             } else {
-                s = "fr.${pm.sourceProp?.name}"
+                s = "fr.${pm.sourceProp?.name?.safeName()}"
             }
 
             if (pm.convFn != null && pm.convFn != DataConverters.noConvertConverter) {
@@ -228,9 +237,8 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
             }
             s += addAsTypeAndElvis(pm.param.type, wasConverted)
 
-            paramStr += "${pm.param.name} = $s"
+            paramStr += "${pm.param.name?.safeName()} = $s"
             paramStr += ",\n"
-
         }
         return paramStr
     }
@@ -281,6 +289,8 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
     }
 
     private fun getKTypeClassString(kType: KType) = (kType.classifier as KClass<*>).qualifiedName + "::class"
+
+    private fun String.safeName(): String = if (alphanumRegEx.matches(this)) this else "`$this`"
 }
 
 // task queue with 2 workers for object compiler
@@ -305,9 +315,10 @@ internal object CompilerQueue {
         return ThreadPoolExecutor(
             minCount,
             maxCount,
-            30, SECONDS,
+            30,
+            SECONDS,
             LinkedBlockingQueue(queueSize),
-            threadFactory
+            threadFactory,
         )
     }
 }

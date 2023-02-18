@@ -57,8 +57,8 @@ internal class DataConverters(
     fun <To> getConverter(sourceType: KType, targetType: KProperty1<To, *>): ConvFn? {
         val sourceKlass: KClass<*> = (sourceType.classifier as KClass<*>)
         val targetKlass: KClass<*> = (targetType.returnType.classifier as KClass<*>)
-        println("conv sourceType=${sourceType} $sourceKlass targetField=${targetType.name}")
-        return getConverter(sourceKlass, targetKlass) { "sourceType=${sourceType} targetField=${targetType.name}" }
+        println("conv sourceType=$sourceType $sourceKlass targetField=${targetType.name}")
+        return getConverter(sourceKlass, targetKlass) { "sourceType=$sourceType targetField=${targetType.name}" }
     }
 
     @Suppress("UNCHECKED_CAST")

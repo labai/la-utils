@@ -1,8 +1,10 @@
 package performance
 
+import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.LaMapper
 import com.github.labai.utils.mapper.LaMapper.AutoMapperImpl
+import com.github.labai.utils.mapper.LaMapper.ConverterConfig
 import com.github.labai.utils.mapper.MapperCompiler
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -13,29 +15,33 @@ import org.junit.jupiter.api.Test
  *
  * 20 fields, no transformation, simple fields assign
  *
- * Results (kotlin 1.7.20)
- *  asgn - hardcoded assign
- *  comp - compiled mapper
- *  mapr - reflection mapper
+ * Results
  *  pojo - java reflection pojo copy
+ *  comp - compiled mapper
+ *  asgn - hardcoded assign
+ *  mapr - default mapper
+ *  refl - reflection mapper (disabled precompile)
  *
+ * kotlin 1.7.20, jvm 8
  *  1. Copy properties
- *  pojo=1024, comp=24, asgn=25, mapr=1518
+ *  pojo=1208, comp=45, asgn=46, mapr=602, refl=1654
  *
  *  2. With map constructor (with optional arguments)
- *  pojo=1162, comp=37, asgn=54, mapr=2447
+ *  pojo=1144, comp=66, asgn=85, mapr=2542, refl=2933
  *
  *  3 With array constructor (when all arguments provided)
- *  pojo=1117, comp=64, asgn=31, mapr=870
- *
+ *  pojo=1292, comp=94, asgn=62, mapr=668, refl=1015
  *
  */
+@Suppress("unused")
 @Disabled
 class TestPerformance1 {
+    val reflectionLaMapper = LaMapper(LaConverterRegistry.global, ConverterConfig().copy(partiallyCompile = false))
 
     @Test
     internal fun test_1_performance_with_properties() {
         val mapper: AutoMapper<From, To1Prop> = LaMapper.autoMapper()
+        val reflectionMapper: AutoMapper<From, To1Prop> = reflectionLaMapper.autoMapper()
         val compiledMapper = MapperCompiler(LaMapper.global).compiledMapper(mapper as AutoMapperImpl)!!
 
         PerfHelper.testForClasses(
@@ -43,13 +49,15 @@ class TestPerformance1 {
             createToFn = { To1Prop() },
             mapperFn = { fr -> mapper.transform(fr) },
             assignFn = { fr -> To1Prop.copyFromFrom(fr) },
-            compiledFn = { fr -> compiledMapper.transform(fr) }
+            compiledFn = { fr -> compiledMapper.transform(fr) },
+            reflectionFn = { fr -> reflectionMapper.transform(fr) },
         )
     }
 
     @Test
     internal fun test_2_performance_with_constructor_map() {
         val mapper: AutoMapper<From, To2CMap> = LaMapper.autoMapper()
+        val reflectionMapper: AutoMapper<From, To2CMap> = reflectionLaMapper.autoMapper()
         val compiledMapper = MapperCompiler(LaMapper.global).compiledMapper(mapper as AutoMapperImpl)!!
 
         PerfHelper.testForClasses(
@@ -57,14 +65,15 @@ class TestPerformance1 {
             createToFn = { To2CMap() },
             mapperFn = { fr -> mapper.transform(fr) },
             assignFn = { fr -> To2CMap.copyFromFrom(fr) },
-            compiledFn = { fr -> compiledMapper.transform(fr) }
+            compiledFn = { fr -> compiledMapper.transform(fr) },
+            reflectionFn = { fr -> reflectionMapper.transform(fr) },
         )
     }
-
 
     @Test
     internal fun test_3_performance_with_constructor_array() {
         val mapper: AutoMapper<From, To3CArr> = LaMapper.autoMapper()
+        val reflectionMapper: AutoMapper<From, To3CArr> = reflectionLaMapper.autoMapper()
         val compiledMapper = MapperCompiler(LaMapper.global).compiledMapper(mapper as AutoMapperImpl)!!
 
         PerfHelper.testForClasses(
@@ -72,7 +81,8 @@ class TestPerformance1 {
             createToFn = { To3CArr() },
             mapperFn = { fr -> mapper.transform(fr) },
             assignFn = { fr -> To3CArr.copyFromFrom(fr) },
-            compiledFn = { fr -> compiledMapper.transform(fr) }
+            compiledFn = { fr -> compiledMapper.transform(fr) },
+            reflectionFn = { fr -> reflectionMapper.transform(fr) },
         )
     }
 
@@ -99,7 +109,6 @@ class TestPerformance1 {
             a18 = "a18-$i"
             a19 = "a19-$i"
         }
-
     }
 
     class From {
@@ -175,7 +184,7 @@ class TestPerformance1 {
     }
 
     // for constructor with map parameters test
-    class To2CMap (
+    class To2CMap(
         var a00: String? = null,
         var a01: String? = null,
         var a02: String? = null,
@@ -224,7 +233,7 @@ class TestPerformance1 {
     }
 
     // for constructor with array parameters test
-    class To3CArr (
+    class To3CArr(
         var a00: String? = null,
         var a01: String? = null,
         var a02: String? = null,
