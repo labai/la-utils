@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Nullable;
  * @author Augustus
  * created on 2022.11.21
  */
-public class StructJv {
+public class StructuresInJava {
 
 
     public static class Test1Pojo {

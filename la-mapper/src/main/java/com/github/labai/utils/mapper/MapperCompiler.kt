@@ -25,8 +25,8 @@ package com.github.labai.utils.mapper
 
 import com.github.labai.utils.convert.ITypeConverter
 import com.github.labai.utils.mapper.KotlinObjectSourceGenerator.GeneratedSource
-import com.github.labai.utils.mapper.LaMapper.AutoMapperImpl
-import com.github.labai.utils.mapper.LaMapper.ConverterConfig
+import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
+import com.github.labai.utils.mapper.LaMapperImpl.AutoMapperImpl
 import com.github.labai.utils.mapper.MapperCompiler.DynamicConverter
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
@@ -49,7 +49,7 @@ import kotlin.reflect.jvm.jvmName
  *
  * for la-mapper only!
  */
-class MapperCompiler(laMapper: LaMapper) {
+class MapperCompiler(serviceContext: ServiceContext) {
     private val logger = LoggerFactory.getLogger(MapperCompiler::class.java)
     private val sourceLogger = LoggerFactory.getLogger("LaMapper-generatedSource")
 
@@ -61,15 +61,15 @@ class MapperCompiler(laMapper: LaMapper) {
         }
     }
 
-    class DynamicConverter(laMapper: LaMapper) {
-        private val dataConverters: DataConverters = laMapper.dataConverters
+    private val dynamicConverter = DynamicConverter(serviceContext)
+    private val config: LaMapperConfig = serviceContext.config
+
+    class DynamicConverter(serviceContext: ServiceContext) {
+        private val dataConverters: DataConverters = serviceContext.dataConverters
         fun convertValue(value: Any?, targetKlass: KClass<*>, nullable: Boolean): Any? {
             return dataConverters.convertValue(value, targetKlass, nullable)
         }
     }
-
-    private val dynamicConverter = DynamicConverter(laMapper)
-    private val config: ConverterConfig = laMapper.config
 
     internal fun <Fr : Any, To : Any> compiledMapper(mapper: AutoMapperImpl<Fr, To>): AutoMapper<Fr, To>? {
         mapper.init()
@@ -125,7 +125,7 @@ class MapperCompiler(laMapper: LaMapper) {
 //
 internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
     private val dynamicConverter: DynamicConverter,
-    private val converterConfig: ConverterConfig,
+    private val laMapperConfig: LaMapperConfig,
     private val struct: MappedStruct<Fr, To>,
 ) {
 
@@ -268,8 +268,8 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
 
     private fun getPrimitiveDefault(klass: KClass<*>): String? {
         if (klass.java == String::class.java)
-            return if (converterConfig.autoConvertNullToString) "\"\"" else null
-        if (!converterConfig.autoConvertNullForPrimitive)
+            return if (laMapperConfig.autoConvertNullToString) "\"\"" else null
+        if (!laMapperConfig.autoConvertNullForPrimitive)
             return null
         return when (klass) {
             Boolean::class -> "false"
@@ -296,7 +296,7 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
 // task queue with 2 workers for object compiler
 //
 internal object CompilerQueue {
-    private val executor = createExecutor(threadPrefix = "LaMapCmp", minCount = 0, maxCount = 2, queueSize = 999)
+    private val executor by lazy { createExecutor(threadPrefix = "LaMapCmp", minCount = 0, maxCount = 2, queueSize = 999) }
 
     internal fun <Fr : Any, To : Any> addTask(compiler: MapperCompiler, mappedStruct: MappedStruct<Fr, To>, callbackFn: (AutoMapper<Fr, To>?) -> Unit) {
         executor.submit {

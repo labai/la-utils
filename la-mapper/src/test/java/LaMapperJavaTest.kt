@@ -1,5 +1,5 @@
-import StructJv.Test1Pojo
-import StructJv.Test2PojoConstr
+import StructuresInJava.Test1Pojo
+import StructuresInJava.Test2PojoConstr
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.fail
 import org.junit.jupiter.params.ParameterizedTest

@@ -3,9 +3,8 @@ package performance
 import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.LaMapper
-import com.github.labai.utils.mapper.LaMapper.AutoMapperImpl
-import com.github.labai.utils.mapper.LaMapper.ConverterConfig
-import com.github.labai.utils.mapper.MapperCompiler
+import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
+import com.github.labai.utils.mapper.LaMapperImpl.AutoMapperImpl
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
@@ -20,14 +19,14 @@ import java.math.BigDecimal
  *
 */
 class TestPerformance2 {
-    private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, ConverterConfig().copy(partiallyCompile = false))
+    private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(partiallyCompile = false))
 
     @Test
     @Disabled
     fun test_performance_mixed() {
         val defaultMapper = getMapper(LaMapper.global)
         val reflectionMapper = getMapper(reflectionLaMapper)
-        val compiledMapper = MapperCompiler(LaMapper.global).compiledMapper(defaultMapper as AutoMapperImpl)!!
+        val compiledMapper = LaMapper.global.laMapperImpl.mapperCompiler.compiledMapper(reflectionMapper as AutoMapperImpl)!!
         PerfHelper.testForClasses(
             createFromFn = { createFrom(it) },
             createToFn = { fr -> To(fr.aaa.toInt(), fr.fld2, fr.fld3, fr.fld4) },

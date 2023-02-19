@@ -1,17 +1,16 @@
 import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.LaMapper
-import com.github.labai.utils.mapper.LaMapper.AutoMapperImpl
-import com.github.labai.utils.mapper.LaMapper.ConverterConfig
+import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
 import com.github.labai.utils.mapper.LaMapper.MapperBuilder
-import com.github.labai.utils.mapper.MapperCompiler
+import com.github.labai.utils.mapper.LaMapperImpl.AutoMapperImpl
 import com.google.gson.GsonBuilder
 
 /*
  * @author Augustus
  * created on 2023-02-18
 */
-private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, ConverterConfig().copy(partiallyCompile = false))
+private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(partiallyCompile = false))
 private val gson = GsonBuilder().setPrettyPrinting().create()
 
 internal fun printJson(obj: Any) {
@@ -27,8 +26,8 @@ internal inline fun <reified Fr : Any, reified To : Any> getMapper(
             reflectionLaMapper.autoMapper(mapping)
         }
         "compile" -> {
-            val mapperx = LaMapper.autoMapper(mapping)
-            MapperCompiler(LaMapper.global).compiledMapper(mapperx as AutoMapperImpl)!!
+            val mapperx = LaMapper.autoMapper(mapping) as AutoMapperImpl
+            LaMapper.global.laMapperImpl.mapperCompiler.compiledMapper(mapperx)!!
         }
         "default" -> {
             LaMapper.autoMapper(mapping)

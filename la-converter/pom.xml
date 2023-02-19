@@ -44,8 +44,7 @@
             <groupId>com.github.labai.utils</groupId>
             <artifactId>la-converter-shade</artifactId>
             <version>0.0.1</version>
-            <optional>true</optional>
-            <scope>provided</scope>
+            <optional>true</optional><!-- do not include into dependency tree -->
         </dependency>
 
         <!-- TEST SCOPE -->

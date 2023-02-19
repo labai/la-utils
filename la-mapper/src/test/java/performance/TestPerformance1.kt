@@ -3,9 +3,8 @@ package performance
 import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.LaMapper
-import com.github.labai.utils.mapper.LaMapper.AutoMapperImpl
-import com.github.labai.utils.mapper.LaMapper.ConverterConfig
-import com.github.labai.utils.mapper.MapperCompiler
+import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
+import com.github.labai.utils.mapper.LaMapperImpl.AutoMapperImpl
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
@@ -36,13 +35,13 @@ import org.junit.jupiter.api.Test
 @Suppress("unused")
 @Disabled
 class TestPerformance1 {
-    val reflectionLaMapper = LaMapper(LaConverterRegistry.global, ConverterConfig().copy(partiallyCompile = false))
+    private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(partiallyCompile = false))
 
     @Test
     internal fun test_1_performance_with_properties() {
         val mapper: AutoMapper<From, To1Prop> = LaMapper.autoMapper()
         val reflectionMapper: AutoMapper<From, To1Prop> = reflectionLaMapper.autoMapper()
-        val compiledMapper = MapperCompiler(LaMapper.global).compiledMapper(mapper as AutoMapperImpl)!!
+        val compiledMapper = LaMapper.global.laMapperImpl.mapperCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
         PerfHelper.testForClasses(
             createFromFn = { createFrom(it) },
@@ -58,7 +57,7 @@ class TestPerformance1 {
     internal fun test_2_performance_with_constructor_map() {
         val mapper: AutoMapper<From, To2CMap> = LaMapper.autoMapper()
         val reflectionMapper: AutoMapper<From, To2CMap> = reflectionLaMapper.autoMapper()
-        val compiledMapper = MapperCompiler(LaMapper.global).compiledMapper(mapper as AutoMapperImpl)!!
+        val compiledMapper = LaMapper.global.laMapperImpl.mapperCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
         PerfHelper.testForClasses(
             createFromFn = { createFrom(it) },
@@ -74,7 +73,7 @@ class TestPerformance1 {
     internal fun test_3_performance_with_constructor_array() {
         val mapper: AutoMapper<From, To3CArr> = LaMapper.autoMapper()
         val reflectionMapper: AutoMapper<From, To3CArr> = reflectionLaMapper.autoMapper()
-        val compiledMapper = MapperCompiler(LaMapper.global).compiledMapper(mapper as AutoMapperImpl)!!
+        val compiledMapper = LaMapper.global.laMapperImpl.mapperCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
         PerfHelper.testForClasses(
             createFromFn = { createFrom(it) },

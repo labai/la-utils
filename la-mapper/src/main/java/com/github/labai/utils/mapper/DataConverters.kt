@@ -26,7 +26,7 @@ package com.github.labai.utils.mapper
 import com.github.labai.utils.convert.IConverterResolver
 import com.github.labai.utils.convert.ITypeConverter
 import com.github.labai.utils.convert.LaConvertException
-import com.github.labai.utils.mapper.LaMapper.ConverterConfig
+import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
 import java.math.BigInteger
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
@@ -40,7 +40,7 @@ import kotlin.reflect.full.primaryConstructor
  */
 internal class DataConverters(
     private val laConverterRegistry: IConverterResolver,
-    private val converterConfig: ConverterConfig,
+    private val laMapperConfig: LaMapperConfig,
 ) {
     private val unumberConverterResolver = KotlinUNumberConverterResolver(laConverterRegistry)
 
@@ -67,7 +67,7 @@ internal class DataConverters(
         if (convFn != null)
             return convFn
 
-        if (converterConfig.autoConvertValueClass) {
+        if (laMapperConfig.autoConvertValueClass) {
             // for value classes try more combination (value to/from simple)
             val sourceUnwrapped = getCustomUnwrappedTypeOrNull(sourceKlass)
             if (sourceUnwrapped != null) {
@@ -83,7 +83,7 @@ internal class DataConverters(
                     return wrapTargetValueClassConverter(targetKlass as KClass<Any>, fn)
             }
 
-            if (converterConfig.autoConvertValueValue) {
+            if (laMapperConfig.autoConvertValueValue) {
                 if (sourceUnwrapped != null && targetUnwrapped != null) {
                     val fn = getBaseConverter(sourceUnwrapped, targetUnwrapped)
                     if (fn != null)
@@ -141,8 +141,8 @@ internal class DataConverters(
 
     private fun convertNull(klass: KClass<*>): Any? {
         if (klass.java == String::class.java)
-            return if (converterConfig.autoConvertNullToString) "" else null
-        if (!converterConfig.autoConvertNullForPrimitive)
+            return if (laMapperConfig.autoConvertNullToString) "" else null
+        if (!laMapperConfig.autoConvertNullForPrimitive)
             return null
         when (klass) {
             Boolean::class -> return false

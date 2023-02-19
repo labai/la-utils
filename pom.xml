@@ -16,7 +16,8 @@
     </properties>
 
     <modules>
-        <module>la-converter</module>
+        <!--<module>la-converter</module> -->
+        <!--<module>la-converter-shade</module>-->
         <module>la-mapper</module>
     </modules>
 
