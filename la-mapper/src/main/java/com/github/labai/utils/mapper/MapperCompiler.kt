@@ -61,6 +61,7 @@ class MapperCompiler(serviceContext: ServiceContext) {
         }
     }
 
+    internal var kotlinScriptEngineFactory: ScriptEngineFactory? = null
     private val dynamicConverter = DynamicConverter(serviceContext)
     private val config: LaMapperConfig = serviceContext.config
 
@@ -88,6 +89,8 @@ class MapperCompiler(serviceContext: ServiceContext) {
             obj = processCompile(generated)
             logger.debug("Compiled mapper from '${struct.sourceType.qualifiedName}' to '${struct.targetType.qualifiedName}', time=${System.currentTimeMillis() - startTs}ms")
             sourceLogger.trace(generated.source)
+        } catch (e: EngineInitException) {
+            logger.info("Failed to init kotlin scripting ('${struct.sourceType.qualifiedName}' to '${struct.targetType.qualifiedName}'), continue to use reflection mapping: ${e.message}")
         } catch (e: Throwable) {
             logger.info("Failed to compile mapper from '${struct.sourceType.qualifiedName}' to '${struct.targetType.qualifiedName}', continue to use reflection mapping: ${e.message}")
             sourceLogger.debug(generated.source)
@@ -96,19 +99,11 @@ class MapperCompiler(serviceContext: ServiceContext) {
     }
 
     private fun <R> processCompile(generatedSource: GeneratedSource): R {
-        val scriptEngineManager = ScriptEngineManager()
-
-        val scriptEngine = try {
-            scriptEngineManager.getEngineByExtension("kts")
-        } catch (e: Exception) {
-            throw RuntimeException("Script engine for extension 'kts' was not found: ${e.message}")
-        } ?: throw RuntimeException("Script engine for extension 'kts' was not found")
-
+        val engineFactory = resolveKotlinScriptEngineFactory()
         val engine: ScriptEngine = try {
-            val factory: ScriptEngineFactory = scriptEngine.factory // JVM knows, that kts extension should be compiled with KotlinJsr223JvmLocalScriptEngineFactory
-            factory.scriptEngine
+            engineFactory.scriptEngine
         } catch (e: Exception) {
-            throw RuntimeException("Can't get scriptEngine: ${e.message}")
+            throw EngineInitException("Can't get scriptEngine: ${e.message}")
         }
 
         val engineBindings = engine.createBindings()
@@ -119,6 +114,26 @@ class MapperCompiler(serviceContext: ServiceContext) {
         @Suppress("UNCHECKED_CAST")
         return engine.eval(generatedSource.source, engineBindings) as R
     }
+
+    private fun resolveKotlinScriptEngineFactory(): ScriptEngineFactory {
+        if (kotlinScriptEngineFactory != null)
+            return kotlinScriptEngineFactory!!
+
+        val scriptEngineManager = ScriptEngineManager()
+        val scriptEngine = try {
+            scriptEngineManager.getEngineByExtension("kts")
+        } catch (e: Exception) {
+            throw EngineInitException("Script engine for extension 'kts' was not found: ${e.message}")
+        } ?: throw EngineInitException("Script engine for extension 'kts' was not found")
+
+        try {
+            return scriptEngine.factory // JVM knows, that kts extension should be compiled with KotlinJsr223JvmLocalScriptEngineFactory
+        } catch (e: Exception) {
+            throw EngineInitException("Can't get scriptEngineFactory: ${e.message}")
+        }
+    }
+
+    private class EngineInitException(message: String) : RuntimeException(message)
 }
 
 // generate kotlin sources for compile for mapping function

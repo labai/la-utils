@@ -26,8 +26,8 @@ package com.github.labai.utils.mapper
 import com.github.labai.utils.convert.IConverterResolver
 import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.LaMapperImpl.ManualMapper
-import org.jetbrains.annotations.TestOnly
 import org.slf4j.LoggerFactory
+import javax.script.ScriptEngineFactory
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.KVisibility
@@ -51,14 +51,20 @@ import kotlin.reflect.jvm.reflect
  */
 class LaMapper(
     laConverterRegistry: IConverterResolver,
-    config: LaMapperConfig = LaMapperConfig(),
+    config: ILaMapperConfig = LaMapperConfig(),
 ) {
 
-    @get:TestOnly
-    internal val cache: ClassTrioMap<AutoMapper<*, *>> = ClassTrioMap()
+    // in case consumer wants to use runtime-compile and can provide scripting engine
+    var kotlinScriptEngineFactory: ScriptEngineFactory?
+        get() = laMapperImpl.mapperCompiler.kotlinScriptEngineFactory
+        set(engineFactory) {
+            laMapperImpl.mapperCompiler.kotlinScriptEngineFactory = engineFactory
+        }
 
-    @get:TestOnly
+    internal val cache: ClassTrioMap<AutoMapper<*, *>> = ClassTrioMap()
     internal val laMapperImpl = LaMapperImpl(laConverterRegistry, config)
+
+    interface ILaMapperConfig
 
     data class LaMapperConfig(
         internal val autoConvertNullForPrimitive: Boolean = true, // do auto-convert null to 0 for non-nullable Numbers and Boolean
@@ -69,7 +75,7 @@ class LaMapper(
         internal val partiallyCompile: Boolean = true, // try to compile partially (to jvm)
         internal val startCompileAfterIterations: Int = 1000, // start to kotlin-compile after n iterations
         internal val visibilities: Set<KVisibility> = setOf(PUBLIC, INTERNAL),
-    )
+    ) : ILaMapperConfig
 
     companion object {
         internal val logger = LoggerFactory.getLogger(LaMapper::class.java)

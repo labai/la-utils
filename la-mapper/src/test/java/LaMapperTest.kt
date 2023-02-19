@@ -1,6 +1,7 @@
 import com.github.labai.utils.mapper.LaMapper
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import java.math.BigDecimal
@@ -252,6 +253,22 @@ class LaMapperTest {
         assertEquals(4, res.v13)
         assertEquals(5, res.v14)
         assertEquals(5, res.v15)
+    }
+
+    interface IFr10
+    class Fr10(val a01: String) : IFr10
+    class To10(val a01: String)
+
+    @Test
+    internal fun test10_from_interface_subclass() {
+        val fr: IFr10 = Fr10("a")
+        val res = LaMapper.global.copyFrom(
+            from = fr,
+            sourceType = fr.javaClass.kotlin,
+            targetType = To10::class,
+            mapping = null,
+        )
+        assertEquals(To10("a"), res)
     }
 
     private fun assertEqBigDecimal(expectedAsStr: String, value: BigDecimal) {

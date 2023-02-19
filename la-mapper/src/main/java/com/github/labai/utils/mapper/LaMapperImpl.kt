@@ -28,6 +28,7 @@ import com.github.labai.utils.convert.ITypeConverter
 import com.github.labai.utils.hardreflect.LaHardReflect
 import com.github.labai.utils.hardreflect.PropReader
 import com.github.labai.utils.hardreflect.PropWriter
+import com.github.labai.utils.mapper.LaMapper.ILaMapperConfig
 import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
 import com.github.labai.utils.mapper.LaMapperImpl.ManualMapper
 import org.jetbrains.annotations.TestOnly
@@ -56,8 +57,16 @@ import kotlin.reflect.jvm.javaMethod
  */
 internal class LaMapperImpl(
     laConverterRegistry: IConverterResolver,
-    private val config: LaMapperConfig,
+    _config: ILaMapperConfig,
 ) {
+
+    private val config: LaMapperConfig = if (_config is LaMapperConfig) {
+        _config
+    } else {
+        // "soft" binding, to avoid problems between versions
+        // save to use global - it is already created as it has _config=LaMapperConfig
+        LaMapper.global.copyFrom(_config, _config.javaClass.kotlin, LaMapperConfig::class, null)
+    }
 
     internal val dataConverters = DataConverters(laConverterRegistry, config)
 
