@@ -24,6 +24,8 @@ SOFTWARE.
 package com.github.labai.utils.hardreflect;
 
 import java.lang.reflect.Method;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /*
  * @author Augustus
@@ -37,19 +39,56 @@ import java.lang.reflect.Method;
  */
 public final class LaHardReflect {
 
-    public static PropReader createReaderClass(Class<?> pojoClass, String fieldName) {
+    public static <T> PropReader<T> createReaderClass(Class<T> pojoClass, String fieldName) {
         return LaHardReflectImpl.createReaderClass(pojoClass, fieldName);
     }
 
-    public static PropReader createReaderClass(Class<?> pojoClass, Method getter) {
+    public static <T> PropReader<T> createReaderClass(Class<T> pojoClass, Method getter) {
         return LaHardReflectImpl.createReaderClass(pojoClass, getter);
     }
 
-    public static PropWriter createWriterClass(Class<?> pojoClass, String fieldName) {
+    public static <T> PropWriter<T> createWriterClass(Class<T> pojoClass, String fieldName) {
         return LaHardReflectImpl.createWriterClass(pojoClass, fieldName);
     }
 
-    public static PropWriter createWriterClass(Class<?> pojoClass, Method getter) {
+    public static <T> PropWriter<T> createWriterClass(Class<T> pojoClass, Method getter) {
         return LaHardReflectImpl.createWriterClass(pojoClass, getter);
+    }
+
+    public static PropMultiReader createMultiReaderClass(Class<?> pojoClass, List<String> fields) {
+        List<NameOrAccessor> props = fields.stream().map(NameOrAccessor::name).collect(Collectors.toList());
+        return LaHardReflectImpl.createMultiReaderClass(pojoClass, props);
+    }
+
+    // for LaMapper only
+    public static PropMultiReader createMultiReaderClassForProps(Class<?> pojoClass, List<NameOrAccessor> props) {
+        return LaHardReflectImpl.createMultiReaderClass(pojoClass, props);
+    }
+
+    public static PropMultiWriter createMultiWriterClass(Class<?> pojoClass, List<String> fields) {
+        List<NameOrAccessor> props = fields.stream().map(NameOrAccessor::name).collect(Collectors.toList());
+        return LaHardReflectImpl.createMultiWriterClass(pojoClass, props);
+    }
+
+    // for LaMapper only
+    public static PropMultiWriter createMultiWriterClassForProps(Class<?> pojoClass, List<NameOrAccessor> props) {
+        return LaHardReflectImpl.createMultiWriterClass(pojoClass, props);
+    }
+
+    // for LaMapper only
+    public static class NameOrAccessor {
+        public final String name;
+        public final Method accessor;
+
+        private NameOrAccessor(String name, Method accessor) {
+            this.name = name;
+            this.accessor = accessor;
+        }
+        public static NameOrAccessor name(String name) {
+            return new NameOrAccessor(name, null);
+        }
+        public static NameOrAccessor accessor(Method method) {
+            return new NameOrAccessor(null, method);
+        }
     }
 }

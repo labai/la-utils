@@ -23,6 +23,6 @@ SOFTWARE.
 */
 package com.github.labai.utils.hardreflect;
 
-public interface PropReader {
-    Object readVal(Object pojo);
+public interface PropReader<T> {
+    Object readVal(T pojo);
 }

@@ -7,13 +7,22 @@ package com.github.labai.utils.hardreflect;
 @SuppressWarnings("unused")
 public class Source1 {
 
-    public String aaa;
+    public String a01;
+    public String a02;
 
-    public String getAaa() {
-        return aaa;
+    public String getA01() {
+        return a01;
     }
 
-    public void setAaa(String aaa) {
-        this.aaa = aaa;
+    public void setA01(String a01) {
+        this.a01 = a01;
+    }
+
+    public String getA02() {
+        return a02;
+    }
+
+    public void setA02(String a02) {
+        this.a02 = a02;
     }
 }

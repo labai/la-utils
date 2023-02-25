@@ -13,13 +13,13 @@ import static org.junit.jupiter.api.Assertions.fail;
  * created on 2023-02-14
  */
 @SuppressWarnings("unused")
-public class GenerateTest {
+public class GenerateSinglePropTest {
 
     @Test
     void test_reader_field_external() {
         Source1 pojo = new Source1();
-        pojo.aaa = "bbb";
-        assertReadValue(pojo, "aaa", "bbb");
+        pojo.a01 = "bbb";
+        assertReadValue(pojo, "a01", "bbb");
     }
 
     @Test
@@ -32,8 +32,14 @@ public class GenerateTest {
 
     public static class Source3 {
         private String aaa;
-        public String getAaa() {return aaa;}
-        public void setAaa(String aaa) {this.aaa = aaa;}
+
+        public String getAaa() {
+            return aaa;
+        }
+
+        public void setAaa(String aaa) {
+            this.aaa = aaa;
+        }
     }
 
     @Test
@@ -59,7 +65,7 @@ public class GenerateTest {
     @Test
     void test_writer_write_string() {
         PojoStr pojo = new PojoStr();
-        PropWriter propWriter = LaHardReflect.createWriterClass(pojo.getClass(), "str");
+        PropWriter<PojoStr> propWriter = LaHardReflect.createWriterClass(PojoStr.class, "str");
         propWriter.writeVal(pojo, "bbb");
         assertEquals("bbb", pojo.str);
     }
@@ -95,24 +101,77 @@ public class GenerateTest {
         private float afloat = 5;
         private String str = "str";
 
-        public int getAint() {return aint;}
-        public void setAint(int aint) {this.aint = aint;}
-        public long getAlong() {return along;}
-        public void setAlong(long along) {this.along = along;}
-        public boolean isAboolean() {return aboolean;}
-        public void setAboolean(boolean aboolean) {this.aboolean = aboolean;}
-        public short getAshort() {return ashort;}
-        public void setAshort(short ashort) {this.ashort = ashort;}
-        public byte getAbyte() {return abyte;}
-        public void setAbyte(byte abyte) {this.abyte = abyte;}
-        public char getAchar() {return achar;}
-        public void setAchar(char achar) {this.achar = achar;}
-        public double getAdouble() {return adouble;}
-        public void setAdouble(double adouble) {this.adouble = adouble;}
-        public float getAfloat() {return afloat;}
-        public void setAfloat(float afloat) {this.afloat = afloat;}
-        public String getStr() {return str;}
-        public void setStr(String str) {this.str = str;}
+        public int getAint() {
+            return aint;
+        }
+
+        public void setAint(int aint) {
+            this.aint = aint;
+        }
+
+        public long getAlong() {
+            return along;
+        }
+
+        public void setAlong(long along) {
+            this.along = along;
+        }
+
+        public boolean isAboolean() {
+            return aboolean;
+        }
+
+        public void setAboolean(boolean aboolean) {
+            this.aboolean = aboolean;
+        }
+
+        public short getAshort() {
+            return ashort;
+        }
+
+        public void setAshort(short ashort) {
+            this.ashort = ashort;
+        }
+
+        public byte getAbyte() {
+            return abyte;
+        }
+
+        public void setAbyte(byte abyte) {
+            this.abyte = abyte;
+        }
+
+        public char getAchar() {
+            return achar;
+        }
+
+        public void setAchar(char achar) {
+            this.achar = achar;
+        }
+
+        public double getAdouble() {
+            return adouble;
+        }
+
+        public void setAdouble(double adouble) {
+            this.adouble = adouble;
+        }
+
+        public float getAfloat() {
+            return afloat;
+        }
+
+        public void setAfloat(float afloat) {
+            this.afloat = afloat;
+        }
+
+        public String getStr() {
+            return str;
+        }
+
+        public void setStr(String str) {
+            this.str = str;
+        }
     }
 
     @Test
@@ -140,6 +199,7 @@ public class GenerateTest {
         assertReadValue(pojo, "afloat", 5f);
         assertReadValue(pojo, "str", "str");
     }
+
     @Test
     void test_writer_various_fields() {
         VariousField pojo = new VariousField();
@@ -168,16 +228,15 @@ public class GenerateTest {
 
     @SuppressWarnings("unchecked")
     <T, F> void assertReadValue(T pojo, String fieldName, F expected) {
-        PropReader propReader = LaHardReflect.createReaderClass(pojo.getClass(), fieldName);
+        PropReader<T> propReader = LaHardReflect.createReaderClass((Class<T>) pojo.getClass(), fieldName);
         F res = (F) propReader.readVal(pojo);
         assertEquals(expected, res);
     }
 
-
     @SuppressWarnings("unchecked")
     <T, F> void assertWriteValue(T pojo, String fieldName, F value, Supplier<?> getFn) {
         try {
-            PropWriter propWriter = LaHardReflect.createWriterClass(pojo.getClass(), fieldName);
+            PropWriter<T> propWriter = LaHardReflect.createWriterClass((Class<T>) pojo.getClass(), fieldName);
             propWriter.writeVal(pojo, value);
         } catch (Exception e) {
             fail("Can't assign field '" + fieldName + "' for pojo '" + pojo.getClass().getName() + "': " + e.getMessage());

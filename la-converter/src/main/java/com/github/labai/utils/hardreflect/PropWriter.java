@@ -23,6 +23,6 @@ SOFTWARE.
 */
 package com.github.labai.utils.hardreflect;
 
-public interface PropWriter {
-    void writeVal(Object pojo, Object value);
+public interface PropWriter<T> {
+    void writeVal(T pojo, Object value);
 }
