@@ -21,13 +21,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package com.github.labai.utils.mapper
+package com.github.labai.utils.mapper.impl
 
 import com.github.labai.utils.convert.ITypeConverter
-import com.github.labai.utils.mapper.KotlinObjectSourceGenerator.GeneratedSource
+import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
-import com.github.labai.utils.mapper.LaMapperImpl.AutoMapperImpl
-import com.github.labai.utils.mapper.MapperCompiler.DynamicConverter
+import com.github.labai.utils.mapper.impl.KotlinObjectSourceGenerator.GeneratedSource
+import com.github.labai.utils.mapper.impl.LaMapperImpl.AutoMapperImpl
+import com.github.labai.utils.mapper.impl.LaMapperScriptCompiler.DynamicConverter
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.util.concurrent.LinkedBlockingQueue
@@ -45,12 +46,23 @@ import kotlin.reflect.jvm.jvmName
  * @author Augustus
  *         created on 2023.01.25
  *
- * try to compile mapping object.
+ * Try to compile mapping object.
  *
- * for la-mapper only!
+ * For compiling use kotlin-compiler lib.
+ * Pros
+ *  - mapping performance equal to hardcode mapped
+ *
+ * Cons
+ *  - very big dependency - kotlin-compiler and additional jars weights ~60MB
+ *  - depends on environment, may need to adapt for various packaging types (war, single jar etc.)
+ *
+ * Future of the solution is unclear, very likely it will be removed from project due to those cons.
+ *
+ * For la-mapper only!
+ * 'public' only for script engine
  */
-class MapperCompiler(serviceContext: ServiceContext) {
-    private val logger = LoggerFactory.getLogger(MapperCompiler::class.java)
+class LaMapperScriptCompiler(serviceContext: ServiceContext) {
+    private val logger = LoggerFactory.getLogger(LaMapperScriptCompiler::class.java)
     private val sourceLogger = LoggerFactory.getLogger("LaMapper-generatedSource")
 
     companion object {
@@ -192,17 +204,17 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
 
     private fun generatePropAssign(): String {
         var res = ""
-        for (propMap in struct.propAutoMappers) {
+        for (propMap in struct.propAutoBinds) {
             var s = ""
             var wasConverted = false
             if (propMap.convFn == null || propMap.convFn == DataConverters.noConvertConverter) {
-                s += "to.${propMap.targetProp.name.safeName()} = fr.${propMap.sourceProp.name.safeName()}"
+                s += "to.${propMap.targetPropWr.name.safeName()} = fr.${propMap.sourcePropRd.name.safeName()}"
             } else {
                 convFnArr.add(propMap.convFn)
-                s += "to.${propMap.targetProp.name.safeName()} = convFnArr[${convFnArr.size - 1}].convert(fr.${propMap.sourceProp.name.safeName()})"
+                s += "to.${propMap.targetPropWr.name.safeName()} = convFnArr[${convFnArr.size - 1}].convert(fr.${propMap.sourcePropRd.name.safeName()})"
                 wasConverted = true
             }
-            s += addAsTypeAndElvis(propMap.targetProp.returnType, wasConverted)
+            s += addAsTypeAndElvis(propMap.targetPropWr.returnType, wasConverted)
             res += s + "\n"
         }
         return res
@@ -210,19 +222,19 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
 
     private fun generateManualAssign(): String {
         var res = ""
-        for (mm in struct.propManualMappers) {
-            manualMapperArr.add(mm.manualMapper.mapper)
+        for (mm in struct.propManualBinds) {
+            manualMapperArr.add(mm.manualMapping.mapper)
             var s = "manualMapperArr[${manualMapperArr.size - 1}](fr)"
-            if (mm.manualMapper.convFn != null && mm.manualMapper.convFn != DataConverters.noConvertConverter) {
-                convFnArr.add(mm.manualMapper.convFn!!)
+            if (mm.manualMapping.convFn != null && mm.manualMapping.convFn != DataConverters.noConvertConverter) {
+                convFnArr.add(mm.manualMapping.convFn!!)
                 s = "convFnArr[${convFnArr.size - 1}].convert($s)"
-            } else if (mm.manualMapper.sourceType == null) {
+            } else if (mm.manualMapping.sourceType == null) {
                 // convert on the fly
-                s = "dynamicConverter.convertValue($s, ${getKTypeClassString(mm.targetProp.returnType)}, ${mm.targetProp.returnType.isMarkedNullable})"
+                s = "dynamicConverter.convertValue($s, ${getKTypeClassString(mm.targetPropWr.returnType)}, ${mm.targetPropWr.returnType.isMarkedNullable})"
             }
-            s += addAsTypeAndElvis(mm.targetProp.returnType, true)
+            s += addAsTypeAndElvis(mm.targetPropWr.returnType, true)
 
-            res += "to.${mm.targetProp.name.safeName()} = $s"
+            res += "to.${mm.targetPropWr.name.safeName()} = $s"
             res += "\n"
         }
         return res
@@ -230,22 +242,22 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
 
     private fun generateConstrArgs(): String {
         var paramStr = ""
-        for (pm in struct.paramMappers) {
+        for (pm in struct.paramBinds) {
             var wasConverted = false
             var s: String
-            if (pm.manualMapper != null) {
-                manualMapperArr.add(pm.manualMapper.mapper)
+            if (pm.manualMapping != null) {
+                manualMapperArr.add(pm.manualMapping.mapper)
                 s = "manualMapperArr[${manualMapperArr.size - 1}](fr)"
                 wasConverted = true
             } else {
-                s = "fr.${pm.sourceProp?.name?.safeName()}"
+                s = "fr.${pm.sourcePropRd?.name?.safeName()}"
             }
 
             if (pm.convFn != null && pm.convFn != DataConverters.noConvertConverter) {
                 convFnArr.add(pm.convFn)
                 s = "convFnArr[${convFnArr.size - 1}].convert($s)"
                 wasConverted = true
-            } else if (pm.manualMapper != null && pm.manualMapper.sourceType == null) {
+            } else if (pm.manualMapping != null && pm.manualMapping.sourceType == null) {
                 // convert on the fly
                 s = "dynamicConverter.convertValue($s, ${getKTypeClassString(pm.param.type)}, ${pm.param.type.isMarkedNullable})"
                 wasConverted = true
@@ -309,11 +321,12 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
 }
 
 // task queue with 2 workers for object compiler
+// compiling takes <0.5s, but first compile can be several seconds
 //
 internal object CompilerQueue {
     private val executor by lazy { createExecutor(threadPrefix = "LaMapCmp", minCount = 0, maxCount = 2, queueSize = 999) }
 
-    internal fun <Fr : Any, To : Any> addTask(compiler: MapperCompiler, mappedStruct: MappedStruct<Fr, To>, callbackFn: (AutoMapper<Fr, To>?) -> Unit) {
+    internal fun <Fr : Any, To : Any> addTask(compiler: LaMapperScriptCompiler, mappedStruct: MappedStruct<Fr, To>, callbackFn: (AutoMapper<Fr, To>?) -> Unit) {
         executor.submit {
             val res: AutoMapper<Fr, To>? = compiler.compiledMapper(mappedStruct)
             callbackFn(res)

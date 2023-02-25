@@ -25,7 +25,9 @@ package com.github.labai.utils.mapper
 
 import com.github.labai.utils.convert.IConverterResolver
 import com.github.labai.utils.convert.LaConverterRegistry
-import com.github.labai.utils.mapper.LaMapperImpl.ManualMapper
+import com.github.labai.utils.mapper.impl.ClassTrioMap
+import com.github.labai.utils.mapper.impl.LaMapperImpl
+import com.github.labai.utils.mapper.impl.LaMapperImpl.ManualMapping
 import org.slf4j.LoggerFactory
 import javax.script.ScriptEngineFactory
 import kotlin.reflect.KClass
@@ -56,9 +58,9 @@ class LaMapper(
 
     // in case consumer wants to use runtime-compile and can provide scripting engine
     var kotlinScriptEngineFactory: ScriptEngineFactory?
-        get() = laMapperImpl.mapperCompiler.kotlinScriptEngineFactory
+        get() = laMapperImpl.laMapperScriptCompiler.kotlinScriptEngineFactory
         set(engineFactory) {
-            laMapperImpl.mapperCompiler.kotlinScriptEngineFactory = engineFactory
+            laMapperImpl.laMapperScriptCompiler.kotlinScriptEngineFactory = engineFactory
         }
 
     internal val cache: ClassTrioMap<AutoMapper<*, *>> = ClassTrioMap()
@@ -71,10 +73,12 @@ class LaMapper(
         internal val autoConvertNullToString: Boolean = true, // do auto-convert null to "" for non-nullable Strings
         internal val autoConvertValueClass: Boolean = true, // convert value class to/from primitives
         internal val autoConvertValueValue: Boolean = true, // convert between different value classes - even if we can, it may violate idea of value classes
-        internal val tryCompile: Boolean = false, // try to kotlin-compile
+        internal val tryScriptCompile: Boolean = false, // try to kotlin-compile
         internal val partiallyCompile: Boolean = true, // try to compile partially (to jvm)
-        internal val startCompileAfterIterations: Int = 1000, // start to kotlin-compile after n iterations
+        internal val startCompileAfterIterations: Int = 1000, // start to compile after n iterations
         internal val visibilities: Set<KVisibility> = setOf(PUBLIC, INTERNAL),
+        internal val disableSyntheticConstructorCall: Boolean = false, // disable direct kotlin synthetic constructor usage for optional parameters
+        internal val failOnOptimizationError: Boolean = false, // in case of optimization failure throw an error and don't try to use reflection
     ) : ILaMapperConfig
 
     companion object {
@@ -83,13 +87,13 @@ class LaMapper(
 
         inline fun <reified Fr : Any, reified To : Any> copyFrom(
             from: Fr,
-            noinline mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null,
+            noinline mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
         ): To {
             return global.copyFrom(from, Fr::class, To::class, mapping)
         }
 
         inline fun <reified Fr : Any, reified To : Any> autoMapper(
-            noinline mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null,
+            noinline mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
         ): AutoMapper<Fr, To> {
             return global.autoMapper(Fr::class, To::class, mapping)
         }
@@ -103,7 +107,7 @@ class LaMapper(
     //
     inline fun <reified Fr : Any, reified To : Any> copyFrom(
         from: Fr,
-        noinline mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null,
+        noinline mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
     ): To {
         return copyFrom(from, Fr::class, To::class, mapping)
     }
@@ -112,7 +116,7 @@ class LaMapper(
     // create mapper for Fr->To classes mapping
     //
     inline fun <reified Fr : Any, reified To : Any> autoMapper(
-        noinline mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null,
+        noinline mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
     ): AutoMapper<Fr, To> {
         return autoMapper(Fr::class, To::class, mapping)
     }
@@ -121,7 +125,7 @@ class LaMapper(
         from: Fr,
         sourceType: KClass<Fr>,
         targetType: KClass<To>,
-        mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null,
+        mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
     ): To {
         @Suppress("UNCHECKED_CAST")
         val mapper = cache.getOrPut(from::class, targetType, if (mapping == null) null else mapping::class) {
@@ -133,10 +137,10 @@ class LaMapper(
     fun <Fr : Any, To : Any> autoMapper(
         sourceType: KClass<Fr>,
         targetType: KClass<To>,
-        mapping: (MapperBuilder<Fr, To>.() -> Unit)? = null,
+        mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
     ): AutoMapper<Fr, To> {
         return if (mapping != null) {
-            val builder = MapperBuilder<Fr, To>()
+            val builder = MappingBuilder<Fr, To>()
             builder.mapping()
             laMapperImpl.AutoMapperImpl(sourceType, targetType, builder.map)
         } else {
@@ -144,13 +148,13 @@ class LaMapper(
         }
     }
 
-    open class MapperBuilder<Fr, To> {
-        internal val map: MutableMap<String, ManualMapper<Fr>> = mutableMapOf()
+    open class MappingBuilder<Fr, To> {
+        internal val map: MutableMap<String, ManualMapping<Fr>> = mutableMapOf()
 
         // e.g.
         //  To::address from From::address
         infix fun <V1, V2> KProperty1<To, V1>.from(sourceRef: KProperty1<Fr, V2>) {
-            map[this.name] = ManualMapper(sourceRef::get, sourceRef.returnType)
+            map[this.name] = ManualMapping(sourceRef::get, sourceRef.returnType)
         }
 
         // e.g.
@@ -167,13 +171,13 @@ class LaMapper(
             } catch (e: Error) {
                 null
             }
-            map[this.name] = ManualMapper(sourceFn, returnType)
+            map[this.name] = ManualMapping(sourceFn, returnType)
         }
 
         // e.g.
         //  From::address mapTo To::address
         infix fun <V1, V2> KProperty1<Fr, V1>.mapTo(targetRef: KProperty1<To, V2>) {
-            map[targetRef.name] = ManualMapper(this::get, this.returnType)
+            map[targetRef.name] = ManualMapping(this::get, this.returnType)
         }
     }
 }

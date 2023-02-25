@@ -3,16 +3,24 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
+import org.junit.jupiter.params.provider.MethodSource
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.util.stream.Stream
 
 /**
  * @author Augustus
  *         created on 2022.11.16
  */
 class LaMapperTest {
+
+    companion object {
+        @JvmStatic
+        private fun engines(): Stream<String>? {
+            return Stream.of("default", "reflect", "nosynth", "compile")
+        }
+    }
 
     // ----------------------------------------------------------------
     data class Fr01(
@@ -28,7 +36,7 @@ class LaMapperTest {
     )
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test01_constructor_to_constructor(engine: String) {
         val mapper = getMapper<Fr01, To01>(engine)
 
@@ -59,7 +67,7 @@ class LaMapperTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test02_fields_assign(engine: String) {
         val mapper = getMapper<Fr02, To02>(engine)
 
@@ -88,7 +96,7 @@ class LaMapperTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test03_mixed_assign(engine: String) {
         val mapper = getMapper<Fr03, To03>(engine)
 
@@ -120,7 +128,7 @@ class LaMapperTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test04_mappings_property_mapping(engine: String) {
         val mapper = getMapper<Fr04, To04>(engine) {
             To04::v11 from { it.v11!! * 2 }
@@ -157,7 +165,7 @@ class LaMapperTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test05_mappings_nulls_auto(engine: String) {
         val mapper = getMapper<Fr05, To05>(engine)
 
@@ -189,7 +197,7 @@ class LaMapperTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test06_mappings_nulls_manual(engine: String) {
         val mapper = getMapper<Fr06, To06>(engine) {
             To06::v01 from { null }
@@ -231,10 +239,10 @@ class LaMapperTest {
         var v15: Int = 5, // not existing in from, primitive
     )
 
-    // not full argument constructor (will use 'hashMap' mapping)
+    // not full argument constructor (will use 'map' mapping or special synth call)
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
-    fun test07_mappings_constructor_args_(engine: String) {
+    @MethodSource("engines")
+    fun test07_mappings_constructor_args(engine: String) {
         val mapper = getMapper<Fr07, To08>(engine) {
             To08::v01 from { 3 }
             To08::v12 from Fr07::v12
@@ -268,7 +276,7 @@ class LaMapperTest {
             targetType = To10::class,
             mapping = null,
         )
-        assertEquals(To10("a"), res)
+        assertEquals("a", res.a01)
     }
 
     private fun assertEqBigDecimal(expectedAsStr: String, value: BigDecimal) {

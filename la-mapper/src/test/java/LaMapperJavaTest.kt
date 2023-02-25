@@ -3,13 +3,21 @@ import StructuresInJava.Test2PojoConstr
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.fail
 import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
+import org.junit.jupiter.params.provider.MethodSource
+import java.util.stream.Stream
 
 /**
  * @author Augustus
  *         created on 2022.11.16
  */
 class LaMapperJavaTest {
+
+    companion object {
+        @JvmStatic
+        private fun engines(): Stream<String>? {
+            return Stream.of("default", "reflect", "nosynth", "compile")
+        }
+    }
 
     // ----------------------------------------------------------------
     class TestPojo {
@@ -25,7 +33,7 @@ class LaMapperJavaTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test08_1_java_pojo_fields_visibility_from_java(engine: String) {
         val from = Test1Pojo().apply {
             field1 = "x"
@@ -53,7 +61,7 @@ class LaMapperJavaTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test08_2_java_pojo_fields_visibility_to_java(engine: String) {
         val from = TestPojo().apply {
             field1 = "x"
@@ -81,7 +89,7 @@ class LaMapperJavaTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test08_3_java_pojo_no_constructor(engine: String) {
         val from = TestPojo().apply {
             prop1 = "x"
@@ -91,7 +99,9 @@ class LaMapperJavaTest {
             mapper.transform(from)
             fail { "Expected exception" }
         } catch (e: Exception) {
-            if ((engine in listOf("default", "reflect") && e is IllegalArgumentException) || (engine == "compile" && e is NullPointerException))
+            if (engine == "compile" && e is NullPointerException)
+            // ok
+            else if (e is IllegalArgumentException)
             // ok
             else
                 fail { "Invalid exception type: $e ${e.message}" }

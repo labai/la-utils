@@ -1,5 +1,5 @@
 import com.github.labai.utils.convert.LaConverterRegistry
-import com.github.labai.utils.mapper.KotlinUNumberConverterResolver
+import com.github.labai.utils.mapper.impl.KotlinUNumberConverterResolver
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail

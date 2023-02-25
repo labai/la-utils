@@ -21,7 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package com.github.labai.utils.mapper
+package com.github.labai.utils.mapper.impl
 
 import com.github.labai.utils.convert.IConverterResolver
 import com.github.labai.utils.convert.ITypeConverter
@@ -37,16 +37,17 @@ import kotlin.reflect.full.primaryConstructor
 /**
  * @author Augustus
  *         created on 2023.01.26
+ *
+ *  Data converting service.
+ *
+ *  Mostly reuse la-converter, but in addition support few kotlin specific data types
+ *  (unsigned numbers, value classes).
  */
 internal class DataConverters(
     private val laConverterRegistry: IConverterResolver,
     private val laMapperConfig: LaMapperConfig,
 ) {
     private val unumberConverterResolver = KotlinUNumberConverterResolver(laConverterRegistry)
-
-    companion object {
-        internal val noConvertConverter: ConvFn = ITypeConverter { it }
-    }
 
     fun <Fr, To> getConverter(sourceType: KProperty1<Fr, *>, targetType: KProperty1<To, *>): ConvFn? {
         val sourceKlass: KClass<*> = (sourceType.returnType.classifier as KClass<*>)
@@ -144,21 +145,7 @@ internal class DataConverters(
             return if (laMapperConfig.autoConvertNullToString) "" else null
         if (!laMapperConfig.autoConvertNullForPrimitive)
             return null
-        when (klass) {
-            Boolean::class -> return false
-            Char::class -> return '\u0000'
-            Byte::class -> return 0
-            UByte::class -> return 0
-            Short::class -> return 0
-            UShort::class -> return 0
-            Int::class -> return 0
-            UInt::class -> return 0
-            Long::class -> return 0L
-            ULong::class -> return 0L
-            Float::class -> return 0.0f
-            Double::class -> return 0.0
-        }
-        return null
+        return convertPrimitiveNull(klass)
     }
 
     fun convertNull(targetType: KType): Any? {
@@ -168,6 +155,28 @@ internal class DataConverters(
         if (klass !is KClass<*>)
             return null
         return convertNull(klass)
+    }
+
+    companion object {
+        internal val noConvertConverter: ConvFn = ITypeConverter { it }
+
+        fun convertPrimitiveNull(klass: KClass<*>): Any? {
+            when (klass) {
+                Int::class -> return 0
+                Long::class -> return 0L
+                Boolean::class -> return false
+                Char::class -> return '\u0000'
+                Double::class -> return 0.0
+                Float::class -> return 0.0f
+                Short::class -> return 0
+                Byte::class -> return 0
+                UInt::class -> return 0
+                ULong::class -> return 0L
+                UByte::class -> return 0
+                UShort::class -> return 0
+            }
+            return null
+        }
     }
 }
 

@@ -11,7 +11,7 @@
 
     <properties>
         <java.version>1.8</java.version>
-        <kotlin.version>1.7.20</kotlin.version>
+        <kotlin.version>1.7.22</kotlin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
@@ -41,7 +41,7 @@
         <dependency>
             <groupId>com.github.labai.utils</groupId>
             <artifactId>la-converter</artifactId>
-            <version>0.1.1.dev2</version>
+            <version>0.1.1.dev3</version>
         </dependency>
 
         <dependency>
@@ -170,7 +170,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <jvmTarget>1.8</jvmTarget>
+                    <jvmTarget>${java.version}</jvmTarget>
                     <args>
                         <arg>-Werror</arg>
                     </args>

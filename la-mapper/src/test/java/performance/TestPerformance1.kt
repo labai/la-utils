@@ -4,7 +4,7 @@ import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.LaMapper
 import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
-import com.github.labai.utils.mapper.LaMapperImpl.AutoMapperImpl
+import com.github.labai.utils.mapper.impl.LaMapperImpl.AutoMapperImpl
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
@@ -16,35 +16,38 @@ import org.junit.jupiter.api.Test
  *
  * Results
  *  pojo - java reflection pojo copy
- *  comp - compiled mapper
+ *  comp - script-compiled mapper
  *  asgn - hardcoded assign
  *  mapr - default mapper
  *  refl - reflection mapper (disabled precompile)
  *
- * kotlin 1.7.20, jvm 8
+ * kotlin 1.7.22, jvm 8
  *  1. Copy properties
- *  pojo=1208, comp=45, asgn=46, mapr=602, refl=1654
+ *  j8  pojo=1054, comp=25, asgn=24, mapr=240, refl=1634
+ *  j11 pojo=1208, comp=45, asgn=46, mapr=602, refl=~3000(!)
  *
  *  2. With map constructor (with optional arguments)
- *  pojo=1144, comp=66, asgn=85, mapr=2542, refl=2933
+ *  j8  pojo=1048, comp=25, asgn=30, mapr=486, refl=2760
+ *  j11 pojo=1144, comp=66, asgn=85, mapr=???, refl=2933
  *
  *  3 With array constructor (when all arguments provided)
- *  pojo=1292, comp=94, asgn=62, mapr=668, refl=1015
+ *  j8  pojo=1065, comp=25, asgn=30, mapr=445, refl=844
+ *  j11 pojo=1292, comp=94, asgn=62, mapr=668, refl=1015
  *
  */
 @Suppress("unused")
 @Disabled
 class TestPerformance1 {
-    private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(partiallyCompile = false))
+    private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(partiallyCompile = false, disableSyntheticConstructorCall = true))
 
     @Test
     internal fun test_1_performance_with_properties() {
         val mapper: AutoMapper<From, To1Prop> = LaMapper.autoMapper()
         val reflectionMapper: AutoMapper<From, To1Prop> = reflectionLaMapper.autoMapper()
-        val compiledMapper = LaMapper.global.laMapperImpl.mapperCompiler.compiledMapper(mapper as AutoMapperImpl)!!
+        val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
         PerfHelper.testForClasses(
-            createFromFn = { createFrom(it) },
+            createFromFn = { createFrom(1) },
             createToFn = { To1Prop() },
             mapperFn = { fr -> mapper.transform(fr) },
             assignFn = { fr -> To1Prop.copyFromFrom(fr) },
@@ -57,10 +60,10 @@ class TestPerformance1 {
     internal fun test_2_performance_with_constructor_map() {
         val mapper: AutoMapper<From, To2CMap> = LaMapper.autoMapper()
         val reflectionMapper: AutoMapper<From, To2CMap> = reflectionLaMapper.autoMapper()
-        val compiledMapper = LaMapper.global.laMapperImpl.mapperCompiler.compiledMapper(mapper as AutoMapperImpl)!!
+        val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
         PerfHelper.testForClasses(
-            createFromFn = { createFrom(it) },
+            createFromFn = { createFrom(1) },
             createToFn = { To2CMap() },
             mapperFn = { fr -> mapper.transform(fr) },
             assignFn = { fr -> To2CMap.copyFromFrom(fr) },
@@ -73,10 +76,10 @@ class TestPerformance1 {
     internal fun test_3_performance_with_constructor_array() {
         val mapper: AutoMapper<From, To3CArr> = LaMapper.autoMapper()
         val reflectionMapper: AutoMapper<From, To3CArr> = reflectionLaMapper.autoMapper()
-        val compiledMapper = LaMapper.global.laMapperImpl.mapperCompiler.compiledMapper(mapper as AutoMapperImpl)!!
+        val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
         PerfHelper.testForClasses(
-            createFromFn = { createFrom(it) },
+            createFromFn = { createFrom(1) },
             createToFn = { To3CArr() },
             mapperFn = { fr -> mapper.transform(fr) },
             assignFn = { fr -> To3CArr.copyFromFrom(fr) },
@@ -85,7 +88,7 @@ class TestPerformance1 {
         )
     }
 
-    private fun createFrom(i: Int): From {
+    internal fun createFrom(i: Int): From {
         return From().apply {
             a00 = null
             a01 = "a01-$i"
