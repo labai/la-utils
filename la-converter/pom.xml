@@ -3,7 +3,7 @@
 
     <groupId>com.github.labai.utils</groupId>
     <artifactId>la-converter</artifactId>
-    <version>0.1.1.dev2</version>
+    <version>0.2.1-SNAPSHOT</version>
     <name>Converter</name>
     <packaging>jar</packaging>
     <description>Data type converters</description>
@@ -14,7 +14,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
-
 
     <licenses>
         <license>
@@ -46,6 +45,13 @@
             <version>0.0.1</version>
             <optional>true</optional><!-- do not include into dependency tree -->
         </dependency>
+        <!-- based on
+        <dependency>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm</artifactId>
+            <version>9.4</version>
+        </dependency>
+        -->
 
         <!-- TEST SCOPE -->
 
