@@ -5,6 +5,7 @@ import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.LaMapper
 import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
 import com.github.labai.utils.mapper.impl.LaMapperImpl.AutoMapperImpl
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
@@ -23,16 +24,19 @@ import org.junit.jupiter.api.Test
  *
  * kotlin 1.7.22, jvm 8
  *  1. Copy properties
- *  j8  pojo=1054, comp=25, asgn=24, mapr=240, refl=1634
- *  j11 pojo=1208, comp=45, asgn=46, mapr=602, refl=~3000(!)
+ *  j8  pojo=986, comp=27, asgn=29, mapr=245, refl=1355
+ *  j11 pojo=1211, comp=48, asgn=84, mapr=427, refl=2744
+ *  j17 pojo=1281, comp=43, asgn=91, mapr=438, refl=2843
  *
  *  2. With map constructor (with optional arguments)
- *  j8  pojo=1048, comp=25, asgn=30, mapr=486, refl=2760
- *  j11 pojo=1144, comp=66, asgn=85, mapr=???, refl=2933
+ *  j8  pojo=1007, comp=24, asgn=29, mapr=415, refl=2536
+ *  j11 pojo=1261, comp=62, asgn=59, mapr=645, refl=2823
+ *  j17 pojo=1282, comp=65, asgn=60, mapr=604, refl=3044
  *
  *  3 With array constructor (when all arguments provided)
- *  j8  pojo=1065, comp=25, asgn=30, mapr=445, refl=844
- *  j11 pojo=1292, comp=94, asgn=62, mapr=668, refl=1015
+ *  j8  pojo=1007, comp=41, asgn=29, mapr=387, refl=813
+ *  j11 pojo=1219, comp=74, asgn=89, mapr=576, refl=1100
+ *  j17 pojo=1337, comp=69, asgn=80, mapr=607, refl=1014
  *
  */
 @Suppress("unused")
@@ -40,12 +44,18 @@ import org.junit.jupiter.api.Test
 class TestPerformance1 {
     private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(partiallyCompile = false, disableSyntheticConstructorCall = true))
 
+    @BeforeEach
+    internal fun setUp() {
+        // System.gc()
+    }
+
     @Test
     internal fun test_1_performance_with_properties() {
         val mapper: AutoMapper<From, To1Prop> = LaMapper.autoMapper()
         val reflectionMapper: AutoMapper<From, To1Prop> = reflectionLaMapper.autoMapper()
         val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
+        println("Start test 1")
         PerfHelper.testForClasses(
             createFromFn = { createFrom(1) },
             createToFn = { To1Prop() },
@@ -62,6 +72,7 @@ class TestPerformance1 {
         val reflectionMapper: AutoMapper<From, To2CMap> = reflectionLaMapper.autoMapper()
         val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
+        println("Start test 2")
         PerfHelper.testForClasses(
             createFromFn = { createFrom(1) },
             createToFn = { To2CMap() },
@@ -78,6 +89,7 @@ class TestPerformance1 {
         val reflectionMapper: AutoMapper<From, To3CArr> = reflectionLaMapper.autoMapper()
         val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
+        println("Start test 3")
         PerfHelper.testForClasses(
             createFromFn = { createFrom(1) },
             createToFn = { To3CArr() },

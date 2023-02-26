@@ -55,9 +55,9 @@ internal class MappedStruct<Fr : Any, To : Any>(
     serviceContext: ServiceContext,
 ) {
     internal val targetConstructor: KFunction<To>? = targetType.primaryConstructor
-    internal lateinit var paramBinds: List<ParamBind<Fr>>
-    internal lateinit var propAutoBinds: List<PropAutoBind<Fr, To>>
-    internal lateinit var propManualBinds: List<PropManualBind<Fr, To>>
+    internal lateinit var paramBinds: Array<ParamBind<Fr>>
+    internal lateinit var propAutoBinds: Array<PropAutoBind<Fr, To>>
+    internal lateinit var propManualBinds: Array<PropManualBind<Fr, To>>
     internal var areAllParams: Boolean = false
         private set
     private val dataConverters: DataConverters = serviceContext.dataConverters
@@ -75,7 +75,9 @@ internal class MappedStruct<Fr : Any, To : Any>(
         internal val convFn: ConvFn?,
         internal val dataConverters: DataConverters,
     ) {
-        private val paramKlass = param.type.classifier as KClass<*>
+        private val paramType = param.type
+        private val paramKlass = paramType.classifier as KClass<*>
+
         internal fun mapParam(from: Fr): Any? {
             val value = if (sourcePropRd != null) {
                 sourcePropRd.getValue(from)
@@ -87,7 +89,7 @@ internal class MappedStruct<Fr : Any, To : Any>(
             return if (manualMapping != null && manualMapping.sourceType == null) { // lambdas with unknown return type - convert based on return result
                 dataConverters.convertValue(value, paramKlass)
             } else {
-                convFn.convertVal(value)
+                convFn.convertValOrNull(value)
             } ?: dataConverters.convertNull(param.type)
         }
     }
@@ -104,18 +106,22 @@ internal class MappedStruct<Fr : Any, To : Any>(
     )
 
     private fun init() {
-        val sourcePropsByName: Map<String, PropertyReader<Fr>> = getSourceMemberProps(sourceType).associateBy { it.name }
+        val sourcePropsByName: Map<String, PropertyReader<Fr>> = getSourceMemberProps(sourceType)
+            .associateBy { it.name }
         val targetFieldMap: Map<String, PropertyWriter<To>> = getTargetMemberProps(targetType)
             .associateBy { it.name }
-        val targetArgsMandatory: List<KParameter> = targetConstructor?.parameters
+        val targetArgsMandatory: Array<KParameter> = targetConstructor?.parameters
             ?.filter { it.name in manualMappers || it.name in sourcePropsByName || !it.isOptional }
-            ?: listOf() // may be null for Java classes - then will use no-arg constructor
+            ?.toTypedArray()
+            ?: arrayOf() // may be null for Java classes - then will use no-arg constructor
 
-        propAutoBinds = initPropAutoMappers(sourceType, targetType, manualMappers.keys + targetArgsMandatory.mapNotNull { it.name })
+        propAutoBinds = initPropAutoMappers(sourceType, targetType, skip = manualMappers.keys + targetArgsMandatory.mapNotNull { it.name })
+            .toTypedArray()
 
         propManualBinds = manualMappers.filter { arg -> targetConstructor?.parameters?.none { it.name == arg.key } ?: true }
             .filter { it.key in targetFieldMap }
             .map { PropManualBind(targetFieldMap[it.key]!!, it.value) }
+            .toTypedArray()
 
         initManualMapperDataConverters(targetFieldMap)
 
@@ -136,7 +142,8 @@ internal class MappedStruct<Fr : Any, To : Any>(
                     ParamBind(param, null, prop, convFn, dataConverters)
                 }
             }
-        }
+        }.toTypedArray()
+
         areAllParams = targetConstructor != null && paramBinds.size == targetConstructor.parameters.size
     }
 
@@ -203,17 +210,19 @@ internal class MappedStruct<Fr : Any, To : Any>(
 
         return getTargetMemberProps(targetClass)
             .filter { it.name in propsFr }
-            .mapNotNull {
+            .map {
                 val pfr = propsFr[it.name]!!
                 val convFn = dataConverters.getConverter(pfr.klass, it.klass)
-                if (convFn == null)
-                    null
-                else PropAutoBind(
+                PropAutoBind(
                     sourcePropRd = pfr,
                     targetPropWr = it,
                     convFn = convFn,
                 )
             }
+    }
+
+    companion object {
+        val EMPTY_ARRAY: Array<Any?> = arrayOf()
     }
 }
 

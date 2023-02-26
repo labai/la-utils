@@ -58,8 +58,14 @@ internal class DataConverters(
     fun <To> getConverter(sourceType: KType, targetType: KProperty1<To, *>): ConvFn? {
         val sourceKlass: KClass<*> = (sourceType.classifier as KClass<*>)
         val targetKlass: KClass<*> = (targetType.returnType.classifier as KClass<*>)
-        println("conv sourceType=$sourceType $sourceKlass targetField=${targetType.name}")
         return getConverter(sourceKlass, targetKlass) { "sourceType=$sourceType targetField=${targetType.name}" }
+    }
+
+    fun getConverterNn(sourceKlass: KClass<*>, targetKlass: KClass<*>, targetNullable: Boolean, errorDetails: (() -> String)? = null): ConvFn? {
+        val c = getConverter(sourceKlass, targetKlass, errorDetails)
+        if (!targetNullable || targetKlass.java.isPrimitive)
+            return wrapNotNullConverter(c, targetKlass)
+        return c
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -96,12 +102,26 @@ internal class DataConverters(
         throw LaConvertException("Convert case is not defined (targetType=$sourceKlass sourceType=$targetKlass ${errorDetails?.invoke() ?: ""})")
     }
 
+    private fun wrapNotNullConverter(convFn: ConvFn?, targetKlass: KClass<*>): ConvFn? {
+        val nn = convertNull(targetKlass) ?: return convFn
+        if (convFn == null)
+            return ITypeConverter { it ?: nn }
+        return ITypeConverter { convFn.convert(it) ?: nn }
+    }
+
+    internal fun getNullPrimaryConverter(targetKlass: KClass<*>, isMarkedNullable: Boolean): ConvFn {
+        if (isMarkedNullable)
+            return noConvertConverter
+        val nn = convertNull(targetKlass) ?: return noConvertConverter
+        return ITypeConverter { it ?: nn }
+    }
+
     @Suppress("UNCHECKED_CAST")
     fun <T : Any> convertValue(value: Any?, targetKlass: KClass<T>, nullable: Boolean = true): T? {
         if (value == null)
             return if (nullable) null else convertNull(targetKlass) as T?
         val convFn = getConverter(value::class, targetKlass)
-        return convFn.convertVal(value) as T?
+        return convFn?.convert(value) as T?
     }
 
     @Suppress("UNCHECKED_CAST")

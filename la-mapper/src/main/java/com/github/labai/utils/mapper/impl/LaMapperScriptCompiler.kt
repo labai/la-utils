@@ -276,8 +276,8 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
         var s = ""
         val elvis = addElvis(targetType)
         if (addAsType) {
-            s += " as $targetType"
-            if (!targetType.isMarkedNullable && elvis.isNotBlank())
+            s += " as ${(targetType.classifier as KClass<*>).qualifiedName}"
+            if (targetType.isMarkedNullable || (!targetType.isMarkedNullable && elvis.isNotBlank()))
                 s += "?" // force 'as type' to be nullable, as later will be changed to non-nullable by elvis operator
         }
         return s + elvis

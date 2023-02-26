@@ -146,21 +146,27 @@ private class SimpleReflectionAutoMapper<Fr : Any, To : Any>(
         val target: To = objectCreator.createObject(from)
 
         // ordinary (non-constructor) fields, auto mapped
-        for (propMapper in struct.propAutoBinds) {
+        var i = -1
+        var size = struct.propAutoBinds.size
+        while (++i < size) {
+            val propMapper = struct.propAutoBinds[i]
             val valTo = propMapper.sourcePropRd.getValue(from)
-            val valConv = propMapper.convFn.convertVal(valTo) ?: dataConverters.convertNull(propMapper.targetPropWr.returnType)
+            val valConv = propMapper.convFn.convertValOrNull(valTo) ?: dataConverters.convertNull(propMapper.targetPropWr.returnType)
             propMapper.targetPropWr.setValue(target, valConv)
         }
 
         // ordinary (non-constructor) fields, manually mapped
-        for (mapr in struct.propManualBinds) {
+        i = -1
+        size = struct.propManualBinds.size
+        while (++i < size) {
+            val mapr = struct.propManualBinds[i]
             val valTo = mapr.manualMapping.mapper.invoke(from)
             var valConv = if (valTo == null) {
                 null
             } else if (mapr.manualMapping.sourceType == null) {
                 dataConverters.convertValue(valTo, mapr.targetPropWr.klass)
             } else {
-                mapr.manualMapping.convFn.convertVal(valTo)
+                mapr.manualMapping.convFn.convertValOrNull(valTo)
             }
             if (valConv == null)
                 valConv = dataConverters.convertNull(mapr.targetPropWr.returnType)
@@ -175,7 +181,7 @@ private class SimpleReflectionAutoMapper<Fr : Any, To : Any>(
 internal open class ObjectCreator<Fr : Any, To : Any>(
     private val targetType: KClass<To>,
     private val targetConstructor: KFunction<To>?,
-    private val paramBinds: List<ParamBind<Fr>>,
+    private val paramBinds: Array<ParamBind<Fr>>,
     private val config: LaMapperConfig,
 ) {
     // for case with provided all args
@@ -203,19 +209,22 @@ internal open class ObjectCreator<Fr : Any, To : Any>(
             targetType.createInstance()
         } else if (allArgsNullsTemplate != null) {
             // args as array are slightly faster
-            val paramArr = allArgsNullsTemplate.clone()
-            var i = 0
-            for (param in paramBinds) {
-                paramArr[i++] = param.mapParam(from)
+            val paramArr = if (allArgsNullsTemplate.isNotEmpty()) allArgsNullsTemplate.clone() else MappedStruct.EMPTY_ARRAY
+            var i = -1
+            val size = paramBinds.size
+            while (++i < size) {
+                paramArr[i] = paramBinds[i].mapParam(from)
             }
             targetConstructor.call(*paramArr)
         } else {
             // with optional args
             if (synthConConf != null && !disableSynthCall) {
                 val paramArr = synthConConf.synthArgsTemplate.clone()
-                for ((i, param) in synthConConf.paramBindWithHoles.withIndex()) {
-                    if (param != null)
-                        paramArr[i] = param.mapParam(from)
+                var i = -1
+                val size = paramBinds.size
+                while (++i < size) {
+                    val param = synthConConf.paramBindWithHoles[i] ?: continue
+                    paramArr[i] = param.mapParam(from)
                 }
                 try {
                     synthConConf.synthConstructor.newInstance(*paramArr)
@@ -274,4 +283,4 @@ internal typealias ConvFn = ITypeConverter<in Any, out Any?>
 // manual mapping lambda
 internal typealias ManualFn<Fr> = (Fr) -> Any?
 
-internal fun ConvFn?.convertVal(v: Any?): Any? = if (v == null) null else (if (this == null) v else this.convert(v))
+internal fun ConvFn?.convertValOrNull(v: Any?): Any? = if (v == null) null else (if (this == null) v else this.convert(v))

@@ -71,7 +71,8 @@ internal class LaMapperAsmCompiler(private val serviceContext: ServiceContext) {
                     convFn = orig.convFn,
                     dataConverters = orig.dataConverters,
                 )
-            }
+            }.toTypedArray()
+
             objectCreator = ObjectCreator(struct.targetType, struct.targetConstructor, compiledParamBind, serviceContext.config)
         } else { // nothing to read
             multiReaderMainCon = null
@@ -88,13 +89,12 @@ internal class LaMapperAsmCompiler(private val serviceContext: ServiceContext) {
             .map { it.targetPropWr.toNameOrAccessor() }
         val multiReaderMainAut: MultiReaderMain<Fr>?
         val multiWriterMainAut: MultiWriterMain<To>?
-        val compiledPropAutoBinds: List<PropAutoBind<Fr, To>>
+        val compiledPropAutoBinds: Array<PropAutoBind<Fr, To>>
         if (propsAutFr.isNotEmpty() || propsAutTo.isNotEmpty()) {
             val compiledReader = if (propsAutFr.isEmpty()) null else LaHardReflect.createMultiReaderClassForProps(struct.sourceType.java, propsAutFr)
             val compiledWriter = if (propsAutTo.isEmpty()) null else LaHardReflect.createMultiWriterClassForProps(struct.targetType.java, propsAutTo)
             multiReaderMainAut = if (compiledReader == null) null else MultiReaderMain(compiledReader)
             multiWriterMainAut = if (compiledWriter == null) null else MultiWriterMain(compiledWriter, propsAutTo.size)
-            // val compiledAut
             var rpos = 0
             var wpos = 0
             compiledPropAutoBinds = struct.propAutoBinds.map { orig ->
@@ -103,7 +103,7 @@ internal class LaMapperAsmCompiler(private val serviceContext: ServiceContext) {
                     targetPropWr = multiWriterMainAut?.SinglePropWriter(orig.targetPropWr, wpos++) ?: orig.targetPropWr,
                     convFn = orig.convFn,
                 )
-            }
+            }.toTypedArray()
         } else {
             multiReaderMainAut = null
             multiWriterMainAut = null
@@ -116,7 +116,7 @@ internal class LaMapperAsmCompiler(private val serviceContext: ServiceContext) {
             .filter { isClassSuitableForCompile(it.targetPropWr.klass) }
             .map { it.targetPropWr.toNameOrAccessor() }
         val multiWriterMainMan: MultiWriterMain<To>?
-        val compiledPropManualBinds: List<PropManualBind<Fr, To>>
+        val compiledPropManualBinds: Array<PropManualBind<Fr, To>>
         if (propsManTo.isNotEmpty()) {
             val compiledWriter = LaHardReflect.createMultiWriterClassForProps(struct.targetType.java, propsManTo)
             multiWriterMainMan = MultiWriterMain<To>(compiledWriter, propsManTo.size)
@@ -125,7 +125,7 @@ internal class LaMapperAsmCompiler(private val serviceContext: ServiceContext) {
                     targetPropWr = multiWriterMainMan.SinglePropWriter(orig.targetPropWr, pos),
                     manualMapping = orig.manualMapping,
                 )
-            }
+            }.toTypedArray()
         } else {
             multiWriterMainMan = null
             compiledPropManualBinds = struct.propManualBinds
@@ -139,22 +139,28 @@ internal class LaMapperAsmCompiler(private val serviceContext: ServiceContext) {
 
                 // ordinary (non-constructor) fields, auto mapped
                 multiReaderMainAut?.readValues(from)
-                for (propMapper in compiledPropAutoBinds) {
+                var i = -1
+                var size = compiledPropAutoBinds.size
+                while (++i < size) {
+                    val propMapper = compiledPropAutoBinds[i]
                     val valTo = propMapper.sourcePropRd.getValue(from)
-                    val valConv = propMapper.convFn.convertVal(valTo) ?: serviceContext.dataConverters.convertNull(propMapper.targetPropWr.returnType)
+                    val valConv = propMapper.convFn.convertValOrNull(valTo) ?: serviceContext.dataConverters.convertNull(propMapper.targetPropWr.returnType)
                     propMapper.targetPropWr.setValue(target, valConv)
                 }
                 multiWriterMainAut?.writeValues(target)
 
                 // ordinary (non-constructor) fields, manually mapped
-                for (mapr in compiledPropManualBinds) {
+                i = -1
+                size = compiledPropManualBinds.size
+                while (++i < size) {
+                    val mapr = compiledPropManualBinds[i]
                     val valTo = mapr.manualMapping.mapper.invoke(from)
                     var valConv = if (valTo == null) {
                         null
                     } else if (mapr.manualMapping.sourceType == null) {
                         serviceContext.dataConverters.convertValue(valTo, mapr.targetPropWr.klass)
                     } else {
-                        mapr.manualMapping.convFn.convertVal(valTo)
+                        mapr.manualMapping.convFn.convertValOrNull(valTo)
                     }
                     if (valConv == null)
                         valConv = serviceContext.dataConverters.convertNull(mapr.targetPropWr.returnType)

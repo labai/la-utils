@@ -51,7 +51,7 @@ internal object SynthConstructorUtils {
         val paramBindWithHoles: List<ParamBind<Fr>?>, // list matches constructor params. null is for not provided optional param
     )
 
-    internal fun <Fr : Any, To : Any> prepareSynthConParams(klass: KClass<To>, paramBinds: List<ParamBind<Fr>>): SynthConConf<Fr, To>? {
+    internal fun <Fr : Any, To : Any> prepareSynthConParams(klass: KClass<To>, paramBinds: Array<ParamBind<Fr>>): SynthConConf<Fr, To>? {
         val targetConstructor: KFunction<To> = klass.primaryConstructor ?: return null
         val mappedBinds = paramBinds.associateBy { it.param.name }
         val params = targetConstructor.parameters
