@@ -3,7 +3,7 @@
 
     <groupId>com.github.labai.utils</groupId>
     <artifactId>la-mapper</artifactId>
-    <version>0.2.1-SNAPSHOT</version>
+    <version>0.2.2-SNAPSHOT</version>
     <name>Mapper</name>
     <packaging>jar</packaging>
     <description>Data mapper for kotlin</description>
