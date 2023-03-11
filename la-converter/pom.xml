@@ -3,7 +3,7 @@
 
     <groupId>com.github.labai.utils</groupId>
     <artifactId>la-converter</artifactId>
-    <version>0.2.1-SNAPSHOT</version>
+    <version>0.2.2-SNAPSHOT</version>
     <name>Converter</name>
     <packaging>jar</packaging>
     <description>Data type converters</description>
