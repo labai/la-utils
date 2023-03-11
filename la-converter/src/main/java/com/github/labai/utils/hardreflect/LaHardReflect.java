@@ -23,6 +23,8 @@ SOFTWARE.
 */
 package com.github.labai.utils.hardreflect;
 
+import com.github.labai.utils.hardreflect.impl.LaHardReflectImpl;
+
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.stream.Collectors;
