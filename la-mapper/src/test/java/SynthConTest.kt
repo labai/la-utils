@@ -1,7 +1,7 @@
 import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
 import com.github.labai.utils.mapper.impl.DataConverters
-import com.github.labai.utils.mapper.impl.LaMapperAsmCompiler
+import com.github.labai.utils.mapper.impl.LaMapperAsmCompiler3
 import com.github.labai.utils.mapper.impl.MappedStruct
 import com.github.labai.utils.mapper.impl.ServiceContext
 import com.github.labai.utils.mapper.impl.SynthConstructorUtils
@@ -18,14 +18,14 @@ import org.junit.jupiter.api.fail
 */
 
 class SynthConTest {
-    private val laMapperAsmCompiler: LaMapperAsmCompiler
+    private val laMapperAsmCompiler: LaMapperAsmCompiler3
     private val serviceContext: ServiceContext
 
     init {
         val config = LaMapperConfig()
         val dataConverters = DataConverters(LaConverterRegistry.global, config)
         serviceContext = ServiceContext().apply { this.config = config; this.dataConverters = dataConverters }
-        laMapperAsmCompiler = LaMapperAsmCompiler(serviceContext)
+        laMapperAsmCompiler = LaMapperAsmCompiler3(serviceContext)
     }
 
     class Pojo1

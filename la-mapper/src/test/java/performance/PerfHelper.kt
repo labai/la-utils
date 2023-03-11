@@ -69,14 +69,14 @@ internal object PerfHelper {
         createToFn: (fr: Fr) -> To,
         mapperFn: (fr: Fr) -> To,
         assignFn: (fr: Fr) -> To,
-        compiledFn: (fr: Fr) -> To,
+        partialFn: (fr: Fr) -> To,
         reflectionFn: (fr: Fr) -> To,
     ): Map<String, Long> {
         val stats = mutableMapOf<String, Long>()
         stats["pojo"] = runPojoCopy(list, repeat, createToFn)
         stats["asgn"] = runAssign(list, repeat, assignFn)
         stats["mapr"] = runMapper(list, repeat, mapperFn)
-        stats["comp"] = runMapper(list, repeat, compiledFn)
+        stats["part"] = runMapper(list, repeat, partialFn)
         stats["refl"] = runMapper(list, repeat, reflectionFn)
         return stats
     }
@@ -94,7 +94,7 @@ internal object PerfHelper {
         createToFn: (fr: Fr) -> To,
         mapperFn: (fr: Fr) -> To,
         assignFn: (fr: Fr) -> To,
-        compiledFn: (fr: Fr) -> To,
+        partialFn: (fr: Fr) -> To,
         reflectionFn: (fr: Fr) -> To,
     ) {
         val listSize = 10000
@@ -104,11 +104,11 @@ internal object PerfHelper {
 
         println("Warmup")
         // warmup
-        runForList(list, repeatCount, createToFn, mapperFn, assignFn, compiledFn, reflectionFn)
+        runForList(list, repeatCount, createToFn, mapperFn, assignFn, partialFn, reflectionFn)
 
         val stats = Stats()
         for (i in 1..4) {
-            val st = runForList(list, repeatCount, createToFn, mapperFn, assignFn, compiledFn, reflectionFn)
+            val st = runForList(list, repeatCount, createToFn, mapperFn, assignFn, partialFn, reflectionFn)
             println("Iteration $i: $st")
             stats.addStats(st)
         }

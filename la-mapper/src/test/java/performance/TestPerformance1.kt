@@ -4,7 +4,6 @@ import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.LaMapper
 import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
-import com.github.labai.utils.mapper.impl.LaMapperImpl.AutoMapperImpl
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -42,7 +41,8 @@ import org.junit.jupiter.api.Test
 @Suppress("unused")
 @Disabled
 class TestPerformance1 {
-    private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(partiallyCompile = false, disableSyntheticConstructorCall = true))
+    private val reflectionFactory = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(useCompile = false, disableSyntheticConstructorCall = true))
+    private val partialCompiledFactory = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(disableFullCompile = true))
 
     @BeforeEach
     internal fun setUp() {
@@ -52,8 +52,9 @@ class TestPerformance1 {
     @Test
     internal fun test_1_performance_with_properties() {
         val mapper: AutoMapper<From, To1Prop> = LaMapper.autoMapper()
-        val reflectionMapper: AutoMapper<From, To1Prop> = reflectionLaMapper.autoMapper()
-        val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
+        val reflectionMapper: AutoMapper<From, To1Prop> = reflectionFactory.autoMapper()
+        val partialCompiledMapper: AutoMapper<From, To1Prop> = partialCompiledFactory.autoMapper()
+        // val scriptCompiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
         println("Start test 1")
         PerfHelper.testForClasses(
@@ -61,7 +62,7 @@ class TestPerformance1 {
             createToFn = { To1Prop() },
             mapperFn = { fr -> mapper.transform(fr) },
             assignFn = { fr -> To1Prop.copyFromFrom(fr) },
-            compiledFn = { fr -> compiledMapper.transform(fr) },
+            partialFn = { fr -> partialCompiledMapper.transform(fr) },
             reflectionFn = { fr -> reflectionMapper.transform(fr) },
         )
     }
@@ -69,8 +70,9 @@ class TestPerformance1 {
     @Test
     internal fun test_2_performance_with_constructor_map() {
         val mapper: AutoMapper<From, To2CMap> = LaMapper.autoMapper()
-        val reflectionMapper: AutoMapper<From, To2CMap> = reflectionLaMapper.autoMapper()
-        val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
+        val reflectionMapper: AutoMapper<From, To2CMap> = reflectionFactory.autoMapper()
+        val partialCompiledMapper: AutoMapper<From, To2CMap> = partialCompiledFactory.autoMapper()
+        // val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
         println("Start test 2")
         PerfHelper.testForClasses(
@@ -78,7 +80,7 @@ class TestPerformance1 {
             createToFn = { To2CMap() },
             mapperFn = { fr -> mapper.transform(fr) },
             assignFn = { fr -> To2CMap.copyFromFrom(fr) },
-            compiledFn = { fr -> compiledMapper.transform(fr) },
+            partialFn = { fr -> partialCompiledMapper.transform(fr) },
             reflectionFn = { fr -> reflectionMapper.transform(fr) },
         )
     }
@@ -86,8 +88,9 @@ class TestPerformance1 {
     @Test
     internal fun test_3_performance_with_constructor_array() {
         val mapper: AutoMapper<From, To3CArr> = LaMapper.autoMapper()
-        val reflectionMapper: AutoMapper<From, To3CArr> = reflectionLaMapper.autoMapper()
-        val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
+        val reflectionMapper: AutoMapper<From, To3CArr> = reflectionFactory.autoMapper()
+        val partialCompiledMapper: AutoMapper<From, To3CArr> = partialCompiledFactory.autoMapper()
+        // val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
         println("Start test 3")
         PerfHelper.testForClasses(
@@ -95,7 +98,7 @@ class TestPerformance1 {
             createToFn = { To3CArr() },
             mapperFn = { fr -> mapper.transform(fr) },
             assignFn = { fr -> To3CArr.copyFromFrom(fr) },
-            compiledFn = { fr -> compiledMapper.transform(fr) },
+            partialFn = { fr -> partialCompiledMapper.transform(fr) },
             reflectionFn = { fr -> reflectionMapper.transform(fr) },
         )
     }

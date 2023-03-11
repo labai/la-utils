@@ -23,6 +23,7 @@ SOFTWARE.
 */
 package com.github.labai.utils.mapper.impl
 
+import com.github.labai.utils.convert.ITypeConverter
 import com.github.labai.utils.hardreflect.LaHardReflect.NameOrAccessor
 import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
 import com.github.labai.utils.mapper.impl.LaMapperImpl.ManualMapping
@@ -97,7 +98,7 @@ internal class MappedStruct<Fr : Any, To : Any>(
     internal class PropAutoBind<Fr, To>(
         val sourcePropRd: PropertyReader<Fr>,
         val targetPropWr: PropertyWriter<To>,
-        val convFn: ConvFn?,
+        val convNnFn: ConvFn?,
     )
 
     internal class PropManualBind<Fr : Any, To : Any>(
@@ -123,12 +124,12 @@ internal class MappedStruct<Fr : Any, To : Any>(
             .map { PropManualBind(targetFieldMap[it.key]!!, it.value) }
             .toTypedArray()
 
-        initManualMapperDataConverters(targetFieldMap)
+        initManualMapperDataConverters(targetFieldMap, dataConverters)
 
         paramBinds = targetArgsMandatory.mapNotNull { param ->
             val manMapper = manualMappers[param.name]
             if (manMapper != null) {
-                ParamBind(param, manMapper, null, manMapper.convFn, dataConverters)
+                ParamBind(param, manMapper, null, manMapper.convNnFn, dataConverters)
             } else {
                 val prop = sourcePropsByName[param.name]
                 if (prop == null && !param.isOptional)
@@ -138,7 +139,7 @@ internal class MappedStruct<Fr : Any, To : Any>(
                 } else {
                     val sourceKlass: KClass<*> = prop.klass
                     val targetKlass: KClass<*> = param.type.classifier as KClass<*>
-                    val convFn = dataConverters.getConverter(sourceKlass, targetKlass) { "sourceField=${prop.name} param=${param.name}" }
+                    val convFn = dataConverters.getConverterNn(sourceKlass, targetKlass, param.type.isMarkedNullable) { "sourceField=${prop.name} param=${param.name}" }
                     ParamBind(param, null, prop, convFn, dataConverters)
                 }
             }
@@ -147,24 +148,29 @@ internal class MappedStruct<Fr : Any, To : Any>(
         areAllParams = targetConstructor != null && paramBinds.size == targetConstructor.parameters.size
     }
 
-    private fun initManualMapperDataConverters(targetFieldMap: Map<String, PropertyWriter<To>>) {
+    private fun initManualMapperDataConverters(targetFieldMap: Map<String, PropertyWriter<To>>, dataConverters: DataConverters) {
         val paramMap = targetConstructor?.parameters?.associateBy { it.name } ?: mapOf()
 
         for ((name, manMapper) in manualMappers) {
-            manMapper.sourceType ?: continue
-            if (manMapper.sourceType.classifier !is KClass<*>)
-                continue
-
             val targetType = paramMap[name]?.type   // constructor param
                 ?: targetFieldMap[name]?.returnType // property
                 ?: continue
             if (targetType.classifier !is KClass<*>)
                 continue
-
-            val sourceKlass: KClass<*> = manMapper.sourceType.classifier as KClass<*>
             val targetKlass: KClass<*> = targetType.classifier as KClass<*>
-            manMapper.targetType = targetType
-            manMapper.convFn = dataConverters.getConverter(sourceKlass, targetKlass) { "field=$name" }
+            val targetNullable: Boolean = targetType.isMarkedNullable
+
+            if (manMapper.sourceType == null) { // use on-the-fly converter based on return value
+                manMapper.convNnFn = ITypeConverter { value ->
+                    dataConverters.convertValue(value, targetKlass, targetNullable)
+                }
+            } else {
+                if (manMapper.sourceType.classifier !is KClass<*>)
+                    continue
+                val sourceKlass: KClass<*> = manMapper.sourceType.classifier as KClass<*>
+                manMapper.targetType = targetType
+                manMapper.convNnFn = dataConverters.getConverterNn(sourceKlass, targetKlass, targetType.isMarkedNullable) { "field=$name" }
+            }
         }
     }
 
@@ -212,11 +218,11 @@ internal class MappedStruct<Fr : Any, To : Any>(
             .filter { it.name in propsFr }
             .map {
                 val pfr = propsFr[it.name]!!
-                val convFn = dataConverters.getConverter(pfr.klass, it.klass)
+                val convNnFn = dataConverters.getConverterNn(pfr.klass, it.klass, it.returnType.isMarkedNullable)
                 PropAutoBind(
                     sourcePropRd = pfr,
                     targetPropWr = it,
-                    convFn = convFn,
+                    convNnFn = convNnFn,
                 )
             }
     }

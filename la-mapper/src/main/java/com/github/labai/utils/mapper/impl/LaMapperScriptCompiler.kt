@@ -207,10 +207,10 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
         for (propMap in struct.propAutoBinds) {
             var s = ""
             var wasConverted = false
-            if (propMap.convFn == null || propMap.convFn == DataConverters.noConvertConverter) {
+            if (propMap.convNnFn == null || propMap.convNnFn == DataConverters.noConvertConverter) {
                 s += "to.${propMap.targetPropWr.name.safeName()} = fr.${propMap.sourcePropRd.name.safeName()}"
             } else {
-                convFnArr.add(propMap.convFn)
+                convFnArr.add(propMap.convNnFn)
                 s += "to.${propMap.targetPropWr.name.safeName()} = convFnArr[${convFnArr.size - 1}].convert(fr.${propMap.sourcePropRd.name.safeName()})"
                 wasConverted = true
             }
@@ -225,8 +225,8 @@ internal class KotlinObjectSourceGenerator<Fr : Any, To : Any>(
         for (mm in struct.propManualBinds) {
             manualMapperArr.add(mm.manualMapping.mapper)
             var s = "manualMapperArr[${manualMapperArr.size - 1}](fr)"
-            if (mm.manualMapping.convFn != null && mm.manualMapping.convFn != DataConverters.noConvertConverter) {
-                convFnArr.add(mm.manualMapping.convFn!!)
+            if (mm.manualMapping.convNnFn != null && mm.manualMapping.convNnFn != DataConverters.noConvertConverter) {
+                convFnArr.add(mm.manualMapping.convNnFn!!)
                 s = "convFnArr[${convFnArr.size - 1}].convert($s)"
             } else if (mm.manualMapping.sourceType == null) {
                 // convert on the fly

@@ -17,11 +17,11 @@ private val defaultLaMapper = LaMapper(
 )
 private val reflectionLaMapper = LaMapper(
     LaConverterRegistry.global,
-    LaMapperConfig().copy(partiallyCompile = false, disableSyntheticConstructorCall = true, startCompileAfterIterations = 0, failOnOptimizationError = true),
+    LaMapperConfig().copy(useCompile = false, disableSyntheticConstructorCall = true, startCompileAfterIterations = 0, failOnOptimizationError = true),
 )
 private val noSynthConLaMapper = LaMapper(
     LaConverterRegistry.global,
-    LaMapperConfig().copy(partiallyCompile = true, disableSyntheticConstructorCall = true, startCompileAfterIterations = 0, failOnOptimizationError = true),
+    LaMapperConfig().copy(useCompile = true, disableSyntheticConstructorCall = true, startCompileAfterIterations = 0, failOnOptimizationError = true),
 )
 private val gson = GsonBuilder().setPrettyPrinting().create()
 

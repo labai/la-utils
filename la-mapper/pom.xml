@@ -41,7 +41,7 @@
         <dependency>
             <groupId>com.github.labai.utils</groupId>
             <artifactId>la-converter</artifactId>
-            <version>0.1.1.dev3</version>
+            <version>0.2.1.dev1</version>
         </dependency>
 
         <dependency>

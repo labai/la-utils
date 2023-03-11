@@ -69,7 +69,7 @@ internal class DataConverters(
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun getConverter(sourceKlass: KClass<*>, targetKlass: KClass<*>, errorDetails: (() -> String)? = null): ConvFn? {
+    private fun getConverter(sourceKlass: KClass<*>, targetKlass: KClass<*>, errorDetails: (() -> String)? = null): ConvFn? {
         val convFn = getBaseConverter(sourceKlass, targetKlass)
         if (convFn != null)
             return convFn

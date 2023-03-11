@@ -19,7 +19,7 @@ import java.math.BigDecimal
  *
 */
 class TestPerformance2 {
-    private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(partiallyCompile = false))
+    private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(useCompile = false))
 
     @Test
     @Disabled
@@ -32,7 +32,7 @@ class TestPerformance2 {
             createToFn = { fr -> To(fr.aaa.toInt(), fr.fld2, fr.fld3, fr.fld4) },
             mapperFn = { fr -> defaultMapper.transform(fr) },
             assignFn = { fr -> To.copyFromFrom(fr) },
-            compiledFn = { fr -> compiledMapper.transform(fr) },
+            partialFn = { fr -> compiledMapper.transform(fr) },
             reflectionFn = { fr -> reflectionMapper.transform(fr) },
         )
     }

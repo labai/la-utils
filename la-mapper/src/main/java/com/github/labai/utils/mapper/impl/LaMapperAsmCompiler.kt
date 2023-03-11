@@ -40,15 +40,26 @@ import kotlin.reflect.KType
 /*
  * @author Augustus
  * created on 2023-02-21
-
- * Try to partially compile (access to object properties).
  *
- * For compiling use ASM lib (very small).
+ * Compiled version.
+ *
+ * partially compile - only access to object properties.
+ *
+ * - read source pojo values to array (one reader class)
+ * - write to target pojo from array (one writer class)
+ * - reflection for 'value class' type
+ * - reflection for manual assigns
+ *
+ * For compiling use ASM lib.
  * Pros
  *  - mapping performance is good (few times faster than reflection,
  *    even if few time slower than hardcoded assigns)
+ * Cons
+ *  - still slower than hardcoded assigns
  *
- * Is enabled by default
+ * Is enabled by default - will be chosen when can't use full-copy generated class (LaMapperAsmCompiler2)
+ *
+ *
 */
 internal class LaMapperAsmCompiler(private val serviceContext: ServiceContext) {
 
@@ -101,7 +112,7 @@ internal class LaMapperAsmCompiler(private val serviceContext: ServiceContext) {
                 PropAutoBind(
                     sourcePropRd = multiReaderMainAut?.SinglePropReader(orig.sourcePropRd, rpos++) ?: orig.sourcePropRd,
                     targetPropWr = multiWriterMainAut?.SinglePropWriter(orig.targetPropWr, wpos++) ?: orig.targetPropWr,
-                    convFn = orig.convFn,
+                    convNnFn = orig.convNnFn,
                 )
             }.toTypedArray()
         } else {
@@ -144,7 +155,7 @@ internal class LaMapperAsmCompiler(private val serviceContext: ServiceContext) {
                 while (++i < size) {
                     val propMapper = compiledPropAutoBinds[i]
                     val valTo = propMapper.sourcePropRd.getValue(from)
-                    val valConv = propMapper.convFn.convertValOrNull(valTo) ?: serviceContext.dataConverters.convertNull(propMapper.targetPropWr.returnType)
+                    val valConv = propMapper.convNnFn.convertValNn(valTo)
                     propMapper.targetPropWr.setValue(target, valConv)
                 }
                 multiWriterMainAut?.writeValues(target)
@@ -159,10 +170,11 @@ internal class LaMapperAsmCompiler(private val serviceContext: ServiceContext) {
                         null
                     } else if (mapr.manualMapping.sourceType == null) {
                         serviceContext.dataConverters.convertValue(valTo, mapr.targetPropWr.klass)
+                            ?: serviceContext.dataConverters.convertNull(mapr.targetPropWr.returnType)
                     } else {
-                        mapr.manualMapping.convFn.convertValOrNull(valTo)
+                        mapr.manualMapping.convNnFn.convertValOrNull(valTo)
                     }
-                    if (valConv == null)
+                    if (valConv == null) // todo replace to nn converter
                         valConv = serviceContext.dataConverters.convertNull(mapr.targetPropWr.returnType)
                     mapr.targetPropWr.setValue(target, valConv)
                 }

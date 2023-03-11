@@ -29,16 +29,12 @@ import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.LaMapper
 import com.github.labai.utils.mapper.LaMapper.ILaMapperConfig
 import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
-import com.github.labai.utils.mapper.impl.MappedStruct.ParamBind
-import com.github.labai.utils.mapper.impl.SynthConstructorUtils.SynthConConf
 import org.jetbrains.annotations.TestOnly
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.Supplier
 import kotlin.reflect.KClass
-import kotlin.reflect.KFunction
 import kotlin.reflect.KType
-import kotlin.reflect.full.createInstance
 
 /**
  * @author Augustus
@@ -64,6 +60,7 @@ internal class LaMapperImpl(
     internal val serviceContext = ServiceContext().apply { this.config = this@LaMapperImpl.config; this.dataConverters = this@LaMapperImpl.dataConverters }
     internal val laMapperScriptCompiler = LaMapperScriptCompiler(serviceContext)
     internal val laMapperAsmCompiler = LaMapperAsmCompiler(serviceContext)
+    internal val laMapperAsmCompiler3 = LaMapperAsmCompiler3(serviceContext)
 
     internal inner class AutoMapperImpl<Fr : Any, To : Any>(
         private val sourceType: KClass<Fr>,
@@ -74,7 +71,7 @@ internal class LaMapperImpl(
         internal lateinit var struct: MappedStruct<Fr, To>
         private val isInitialized = AtomicBoolean(false)
 
-        private var needToCompile = config.tryScriptCompile || config.partiallyCompile
+        private var needToCompile = config.tryScriptCompile || config.useCompile
         private var counter: Int = 0
         private var simpleReflectionAutoMapper: AutoMapper<Fr, To>? = null
         private var compiledScriptMapper: AutoMapper<Fr, To>? = null
@@ -83,7 +80,7 @@ internal class LaMapperImpl(
         internal fun init() {
             if (isInitialized.compareAndSet(false, true)) {
                 struct = MappedStruct(sourceType, targetType, manualMappings, serviceContext)
-                simpleReflectionAutoMapper = SimpleReflectionAutoMapper(struct, serviceContext)
+                simpleReflectionAutoMapper = ReflectionAutoMapper(struct, serviceContext)
                 manualMappings = mapOf() // cleanup
             }
 
@@ -96,8 +93,17 @@ internal class LaMapperImpl(
                                     compiledScriptMapper = compiled
                                 }
                             }
-                        } else if (config.partiallyCompile) {
-                            compiledAsmMapper = laMapperAsmCompiler.compiledMapper(struct)
+                        } else if (config.useCompile) {
+                            val hasValueClass = struct.paramBinds.firstOrNull { (it.param.type.classifier as KClass<*>).isValue }
+                                ?: struct.paramBinds.firstOrNull { it.sourcePropRd?.klass?.isValue == true }
+                                ?: struct.propAutoBinds.firstOrNull { it.sourcePropRd.klass.isValue || it.targetPropWr.klass.isValue }
+                                ?: struct.propManualBinds.firstOrNull { it.targetPropWr.klass.isValue }
+                            compiledAsmMapper = if (hasValueClass != null || config.disableSyntheticConstructorCall || config.disableFullCompile) {
+                                LaMapper.logger.debug("Use partial compile for $sourceType to $targetType mapper")
+                                laMapperAsmCompiler.compiledMapper(struct)
+                            } else {
+                                laMapperAsmCompiler3.compiledMapper(struct)
+                            }
                             simpleReflectionAutoMapper = null // doesn't need anymore, cleanup
                         }
                         needToCompile = false
@@ -127,125 +133,10 @@ internal class LaMapperImpl(
 
     internal class ManualMapping<Fr>(
         val mapper: ManualFn<Fr>,
-        val sourceType: KType?,
+        val sourceType: KType?, // type of lambda return
     ) {
-        internal var convFn: ConvFn? = null
+        internal var convNnFn: ConvFn? = null
         internal var targetType: KType? = null
-    }
-}
-
-// default reflection based transformer
-private class SimpleReflectionAutoMapper<Fr : Any, To : Any>(
-    private val struct: MappedStruct<Fr, To>,
-    serviceContext: ServiceContext,
-) : AutoMapper<Fr, To> {
-    private val objectCreator: ObjectCreator<Fr, To> = ObjectCreator(struct.targetType, struct.targetConstructor, struct.paramBinds, serviceContext.config)
-    private val dataConverters = serviceContext.dataConverters
-
-    override fun transform(from: Fr): To {
-        val target: To = objectCreator.createObject(from)
-
-        // ordinary (non-constructor) fields, auto mapped
-        var i = -1
-        var size = struct.propAutoBinds.size
-        while (++i < size) {
-            val propMapper = struct.propAutoBinds[i]
-            val valTo = propMapper.sourcePropRd.getValue(from)
-            val valConv = propMapper.convFn.convertValOrNull(valTo) ?: dataConverters.convertNull(propMapper.targetPropWr.returnType)
-            propMapper.targetPropWr.setValue(target, valConv)
-        }
-
-        // ordinary (non-constructor) fields, manually mapped
-        i = -1
-        size = struct.propManualBinds.size
-        while (++i < size) {
-            val mapr = struct.propManualBinds[i]
-            val valTo = mapr.manualMapping.mapper.invoke(from)
-            var valConv = if (valTo == null) {
-                null
-            } else if (mapr.manualMapping.sourceType == null) {
-                dataConverters.convertValue(valTo, mapr.targetPropWr.klass)
-            } else {
-                mapr.manualMapping.convFn.convertValOrNull(valTo)
-            }
-            if (valConv == null)
-                valConv = dataConverters.convertNull(mapr.targetPropWr.returnType)
-            mapr.targetPropWr.setValue(target, valConv)
-        }
-        return target
-    }
-}
-
-// create object 'targetType' by paramMapper
-// with some optimization based on constructor type
-internal open class ObjectCreator<Fr : Any, To : Any>(
-    private val targetType: KClass<To>,
-    private val targetConstructor: KFunction<To>?,
-    private val paramBinds: Array<ParamBind<Fr>>,
-    private val config: LaMapperConfig,
-) {
-    // for case with provided all args
-    private val allArgsNullsTemplate: Array<Any?>?
-
-    // for case with optional args, but enabled synthetic constructor call hack
-    private val synthConConf: SynthConConf<Fr, To>?
-    private var disableSynthCall = false
-
-    init {
-        if (targetConstructor != null && paramBinds.size == targetConstructor.parameters.size) {
-            allArgsNullsTemplate = arrayOfNulls(targetConstructor.parameters.size)
-            synthConConf = null
-        } else if (targetConstructor != null && !config.disableSyntheticConstructorCall) {
-            allArgsNullsTemplate = null
-            synthConConf = SynthConstructorUtils.prepareSynthConParams(targetType, paramBinds)
-        } else {
-            allArgsNullsTemplate = null
-            synthConConf = null
-        }
-    }
-
-    open fun createObject(from: Fr): To {
-        val target: To = if (targetConstructor == null) {
-            targetType.createInstance()
-        } else if (allArgsNullsTemplate != null) {
-            // args as array are slightly faster
-            val paramArr = if (allArgsNullsTemplate.isNotEmpty()) allArgsNullsTemplate.clone() else MappedStruct.EMPTY_ARRAY
-            var i = -1
-            val size = paramBinds.size
-            while (++i < size) {
-                paramArr[i] = paramBinds[i].mapParam(from)
-            }
-            targetConstructor.call(*paramArr)
-        } else {
-            // with optional args
-            if (synthConConf != null && !disableSynthCall) {
-                val paramArr = synthConConf.synthArgsTemplate.clone()
-                var i = -1
-                val size = paramBinds.size
-                while (++i < size) {
-                    val param = synthConConf.paramBindWithHoles[i] ?: continue
-                    paramArr[i] = param.mapParam(from)
-                }
-                try {
-                    synthConConf.synthConstructor.newInstance(*paramArr)
-                } catch (e: IllegalArgumentException) {
-                    if (!config.failOnOptimizationError && e.stackTrace.isNotEmpty() && e.stackTrace[0].className.startsWith("sun.reflect.")) { // ensure, it is invocation problem
-                        LaMapper.logger.debug("Failed call $targetType (args: ${paramArr.joinToString(", ")}; params: ${synthConConf.synthConstructor.parameters.joinToString(", ")}")
-                        disableSynthCall = true
-                        // retry with native kotlin call
-                        return createObject(from)
-                    }
-                    LaMapper.logger.debug("Failed call $targetType (args: ${paramArr.joinToString(", ")}; params: ${synthConConf.synthConstructor.parameters.joinToString(", ")}")
-                    throw e
-                }
-            } else {
-                val params = paramBinds.associate {
-                    it.param to it.mapParam(from)
-                }
-                targetConstructor.callBy(params)
-            }
-        }
-        return target
     }
 }
 
@@ -283,4 +174,5 @@ internal typealias ConvFn = ITypeConverter<in Any, out Any?>
 // manual mapping lambda
 internal typealias ManualFn<Fr> = (Fr) -> Any?
 
+internal fun ConvFn?.convertValNn(v: Any?): Any? = if (this == null) v else this.convert(v)
 internal fun ConvFn?.convertValOrNull(v: Any?): Any? = if (v == null) null else (if (this == null) v else this.convert(v))

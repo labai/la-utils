@@ -74,10 +74,11 @@ class LaMapper(
         internal val autoConvertValueClass: Boolean = true, // convert value class to/from primitives
         internal val autoConvertValueValue: Boolean = true, // convert between different value classes - even if we can, it may violate idea of value classes
         internal val tryScriptCompile: Boolean = false, // try to kotlin-compile
-        internal val partiallyCompile: Boolean = true, // try to compile partially (to jvm)
+        internal val useCompile: Boolean = true, // try to compile to jvm
         internal val startCompileAfterIterations: Int = 1000, // start to compile after n iterations
         internal val visibilities: Set<KVisibility> = setOf(PUBLIC, INTERNAL),
         internal val disableSyntheticConstructorCall: Boolean = false, // disable direct kotlin synthetic constructor usage for optional parameters
+        internal val disableFullCompile: Boolean = false, // disable full compile (used for tests)
         internal val failOnOptimizationError: Boolean = false, // in case of optimization failure throw an error and don't try to use reflection
     ) : ILaMapperConfig
 
