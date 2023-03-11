@@ -120,7 +120,7 @@ internal open class ObjectCreator<Fr : Any, To : Any>(
             targetType.createInstance()
         } else if (allArgsNullsTemplate != null) {
             // args as array are slightly faster
-            val paramArr = if (allArgsNullsTemplate.isNotEmpty()) allArgsNullsTemplate.clone() else MappedStruct.EMPTY_ARRAY
+            val paramArr = if (allArgsNullsTemplate.isNotEmpty()) allArgsNullsTemplate.clone() else EMPTY_ARRAY
             var i = -1
             val size = paramBinds.size
             while (++i < size) {
@@ -157,5 +157,9 @@ internal open class ObjectCreator<Fr : Any, To : Any>(
             }
         }
         return target
+    }
+
+    companion object {
+        val EMPTY_ARRAY: Array<Any?> = arrayOf()
     }
 }

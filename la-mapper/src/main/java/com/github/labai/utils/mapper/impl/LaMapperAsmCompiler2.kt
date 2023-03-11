@@ -43,7 +43,7 @@ import kotlin.reflect.KType
  *
  * Compiled version.
  *
- * partially compile - only access to object properties.
+ * 2nd version - partially compile - only access to object properties.
  *
  * - read source pojo values to array (one reader class)
  * - write to target pojo from array (one writer class)
@@ -51,17 +51,18 @@ import kotlin.reflect.KType
  * - reflection for manual assigns
  *
  * For compiling use ASM lib.
+ *
  * Pros
- *  - mapping performance is good (few times faster than reflection,
- *    even if few time slower than hardcoded assigns)
+ *  - mapping performance is few times faster than using reflection
+ *
  * Cons
- *  - still slower than hardcoded assigns
+ *  - still slower than handwritten assigns
  *
  * Is enabled by default - will be chosen when can't use full-copy generated class (LaMapperAsmCompiler2)
  *
  *
 */
-internal class LaMapperAsmCompiler(private val serviceContext: ServiceContext) {
+internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) {
 
     internal fun <Fr : Any, To : Any> compiledMapper(struct: MappedStruct<Fr, To>): AutoMapper<Fr, To> {
         // create on reader object for params

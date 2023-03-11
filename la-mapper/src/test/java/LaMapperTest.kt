@@ -7,7 +7,6 @@ import org.junit.jupiter.params.provider.MethodSource
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.util.stream.Stream
 
 /**
  * @author Augustus
@@ -15,14 +14,6 @@ import java.util.stream.Stream
  */
 class LaMapperTest {
 
-    companion object {
-        @JvmStatic
-        private fun engines(): Stream<String>? {
-            return Stream.of("default", "reflect", "nosynth")
-        }
-    }
-
-    // ----------------------------------------------------------------
     data class Fr01(
         val v1: Int,
         val v2: BigDecimal,
@@ -36,9 +27,9 @@ class LaMapperTest {
     )
 
     @ParameterizedTest
-    @MethodSource("engines")
+    @MethodSource(MappersConfig.ENGINES)
     fun test01_constructor_to_constructor(engine: String) {
-        val mapper = getMapper<Fr01, To01>(engine)
+        val mapper = MappersConfig.getMapper<Fr01, To01>(engine)
 
         val from = Fr01(5, BigDecimal("6.5"), "foo")
 
@@ -67,9 +58,9 @@ class LaMapperTest {
     }
 
     @ParameterizedTest
-    @MethodSource("engines")
+    @MethodSource(MappersConfig.ENGINES)
     fun test02_fields_assign(engine: String) {
-        val mapper = getMapper<Fr02, To02>(engine)
+        val mapper = MappersConfig.getMapper<Fr02, To02>(engine)
 
         val from = Fr02().apply {
             a20 = 7
@@ -96,9 +87,9 @@ class LaMapperTest {
     }
 
     @ParameterizedTest
-    @MethodSource("engines")
+    @MethodSource(MappersConfig.ENGINES)
     fun test03_mixed_assign(engine: String) {
-        val mapper = getMapper<Fr03, To03>(engine)
+        val mapper = MappersConfig.getMapper<Fr03, To03>(engine)
 
         val from = Fr03(5, BigDecimal("6.5")).apply {
             v3 = 13
@@ -128,9 +119,9 @@ class LaMapperTest {
     }
 
     @ParameterizedTest
-    @MethodSource("engines")
+    @MethodSource(MappersConfig.ENGINES)
     fun test04_mappings_property_mapping(engine: String) {
-        val mapper = getMapper<Fr04, To04>(engine) {
+        val mapper = MappersConfig.getMapper<Fr04, To04>(engine) {
             To04::v11 from { it.v11!! * 2 }
             To04::v13 from Fr04::v12 // should be auto-convert by types as well (Long->String)
         }
@@ -165,9 +156,9 @@ class LaMapperTest {
     }
 
     @ParameterizedTest
-    @MethodSource("engines")
+    @MethodSource(MappersConfig.ENGINES)
     fun test05_mappings_nulls_auto(engine: String) {
-        val mapper = getMapper<Fr05, To05>(engine)
+        val mapper = MappersConfig.getMapper<Fr05, To05>(engine)
 
         val from = Fr05()
 
@@ -197,9 +188,9 @@ class LaMapperTest {
     }
 
     @ParameterizedTest
-    @MethodSource("engines")
+    @MethodSource(MappersConfig.ENGINES)
     fun test06_mappings_nulls_manual(engine: String) {
-        val mapper = getMapper<Fr06, To06>(engine) {
+        val mapper = MappersConfig.getMapper<Fr06, To06>(engine) {
             To06::v01 from { null }
             To06::v02 from { null }
             To06::v11 from { null }
@@ -241,9 +232,9 @@ class LaMapperTest {
 
     // not full argument constructor (will use 'map' mapping or special synth call)
     @ParameterizedTest
-    @MethodSource("engines")
+    @MethodSource(MappersConfig.ENGINES)
     fun test07_mappings_constructor_args(engine: String) {
-        val mapper = getMapper<Fr07, To08>(engine) {
+        val mapper = MappersConfig.getMapper<Fr07, To08>(engine) {
             To08::v01 from { 3 }
             To08::v12 from Fr07::v12
         }

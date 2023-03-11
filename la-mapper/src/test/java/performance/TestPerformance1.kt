@@ -16,26 +16,23 @@ import org.junit.jupiter.api.Test
  *
  * Results
  *  pojo - java reflection pojo copy
- *  comp - script-compiled mapper
- *  asgn - hardcoded assign
- *  mapr - default mapper
- *  refl - reflection mapper (disabled precompile)
+ *  asgn - handwritten (hardcoded) assign
+ *  mapr - full compiled mapper (default)
+ *  part - partial compiled mapper
+ *  refl - reflection mapper
  *
  * kotlin 1.7.22, jvm 8
  *  1. Copy properties
- *  j8  pojo=986, comp=27, asgn=29, mapr=245, refl=1355
- *  j11 pojo=1211, comp=48, asgn=84, mapr=427, refl=2744
- *  j17 pojo=1281, comp=43, asgn=91, mapr=438, refl=2843
+ *  j8  pojo=1189, asgn=32, mapr=45, part=334, refl=1872
+ *  j17 pojo=1370, asgn=36, mapr=72, part=452, refl=1672
  *
  *  2. With map constructor (with optional arguments)
- *  j8  pojo=1007, comp=24, asgn=29, mapr=415, refl=2536
- *  j11 pojo=1261, comp=62, asgn=59, mapr=645, refl=2823
- *  j17 pojo=1282, comp=65, asgn=60, mapr=604, refl=3044
+ *  j8  pojo=1092, asgn=45, mapr=39, part=395, refl=2639
+ *  j17 pojo=1264, asgn=65, mapr=76, part=624, refl=3341
  *
  *  3 With array constructor (when all arguments provided)
- *  j8  pojo=1007, comp=41, asgn=29, mapr=387, refl=813
- *  j11 pojo=1219, comp=74, asgn=89, mapr=576, refl=1100
- *  j17 pojo=1337, comp=69, asgn=80, mapr=607, refl=1014
+ *  j8  pojo=1160, asgn=34, mapr=39, part=399, refl=816
+ *  j17 pojo=1491, asgn=77, mapr=93, part=631, refl=1155
  *
  */
 @Suppress("unused")

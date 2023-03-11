@@ -45,17 +45,17 @@ _Deci_ use high scale - up to 20 decimals for precision or scale
 which is enough for most real world cases.
 
 ```kotlin
-   println(BigDecimal("5") / BigDecimal("2"))
+   println(5.deci / 2.deci)
 ```
 > 2.5
 
 ```kotlin
-   println(BigDecimal("100000") / BigDecimal("3"))
+   println(100000.deci / 3.deci)
 ```
 > 33333.33333333333333333333
 
 ```kotlin
-   println(BigDecimal("0.00001") / BigDecimal("3"))
+   println(Deci("0.00001") / 3.deci)
 ```
 > 0.0000033333333333333333333
 

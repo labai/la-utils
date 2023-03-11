@@ -226,10 +226,6 @@ internal class MappedStruct<Fr : Any, To : Any>(
                 )
             }
     }
-
-    companion object {
-        val EMPTY_ARRAY: Array<Any?> = arrayOf()
-    }
 }
 
 // property readers and writers

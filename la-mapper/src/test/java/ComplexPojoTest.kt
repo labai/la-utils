@@ -2,7 +2,7 @@ import com.github.labai.utils.mapper.AutoMapper
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
+import org.junit.jupiter.params.provider.MethodSource
 import java.math.BigDecimal
 import kotlin.reflect.KProperty1
 
@@ -16,9 +16,9 @@ import kotlin.reflect.KProperty1
 class ComplexPojoTest {
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "nosynth"])
+    @MethodSource(MappersConfig.ENGINES)
     fun test_assign(engine: String) {
-        val mapper = getMapper<FrX, ToX>(engine) {
+        val mapper = MappersConfig.getMapper<FrX, ToX>(engine) {
             ToX::f02i from FrX::f01i
             ToX::f02in from FrX::f01in
             ToX::f02s from FrX::f01s

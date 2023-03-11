@@ -1,22 +1,12 @@
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
-import java.util.stream.Stream
 
 /**
  * @author Augustus
  *         created on 2022.11.16
  */
 class LaMapperValueClassTest {
-
-    companion object {
-        @JvmStatic
-        private fun engines(): Stream<String>? {
-            return Stream.of("default", "reflect")
-        }
-    }
-
-    // ----------------------------------------------------------------
 
     @JvmInline
     value class Age(val value: Int) {
@@ -37,15 +27,15 @@ class LaMapperValueClassTest {
     class To091(val age: Long)
 
     @ParameterizedTest
-    @MethodSource("engines")
+    @MethodSource(MappersConfig.ENGINES)
     fun test09_1_mappings_value_class_value_to_primitive_arg(engine: String) {
         val from = Fr091(Age(10))
-        val mapper = getMapper<Fr091, To091>(engine)
+        val mapper = MappersConfig.getMapper<Fr091, To091>(engine)
 
         val res = mapper.transform(from)
         assertEquals(10, res.age)
 
-        val mapper2 = getMapper<To091, Fr091>(engine)
+        val mapper2 = MappersConfig.getMapper<To091, Fr091>(engine)
 
         val res2 = mapper2.transform(res)
         assertEquals(Age(10), res2.age)
@@ -60,14 +50,14 @@ class LaMapperValueClassTest {
     }
 
     @ParameterizedTest
-    @MethodSource("engines")
+    @MethodSource(MappersConfig.ENGINES)
     fun test09_2_mappings_value_class_value_to_primitive_prop(engine: String) {
         val from = Fr092().apply { age = Age(10) }
-        val mapper = getMapper<Fr092, To092>(engine)
+        val mapper = MappersConfig.getMapper<Fr092, To092>(engine)
         val res = mapper.transform(from)
         assertEquals(10, res.age)
 
-        val mapper2 = getMapper<To092, Fr092>(engine)
+        val mapper2 = MappersConfig.getMapper<To092, Fr092>(engine)
         val res2 = mapper2.transform(res)
         assertEquals(Age(10), res2.age)
     }
@@ -76,14 +66,14 @@ class LaMapperValueClassTest {
     class To093(val age: AgeS)
 
     @ParameterizedTest
-    @MethodSource("engines")
+    @MethodSource(MappersConfig.ENGINES)
     fun test09_3_mappings_value_class_value_to_value_string(engine: String) {
         val from = Fr093(age = Age(10))
-        val mapper = getMapper<Fr093, To093>(engine)
+        val mapper = MappersConfig.getMapper<Fr093, To093>(engine)
         val res = mapper.transform(from)
         assertEquals(AgeS("10"), res.age)
 
-        val mapper2 = getMapper<To093, Fr093>(engine)
+        val mapper2 = MappersConfig.getMapper<To093, Fr093>(engine)
         val res2 = mapper2.transform(res)
         assertEquals(Age(10), res2.age)
     }
@@ -92,15 +82,15 @@ class LaMapperValueClassTest {
     class To094(val age: AgeX)
 
     @ParameterizedTest
-    @MethodSource("engines")
+    @MethodSource(MappersConfig.ENGINES)
     fun test09_4_mappings_value_class_value_to_value(engine: String) {
         val from = Fr094(age = Age(10))
 
-        val mapper = getMapper<Fr094, To094>(engine)
+        val mapper = MappersConfig.getMapper<Fr094, To094>(engine)
         val res = mapper.transform(from)
         assertEquals(AgeX(10), res.age)
 
-        val mapper2 = getMapper<To094, Fr094>(engine)
+        val mapper2 = MappersConfig.getMapper<To094, Fr094>(engine)
         val res2 = mapper2.transform(res)
         assertEquals(Age(10), res2.age)
     }
@@ -119,14 +109,14 @@ class LaMapperValueClassTest {
     class To095(val age: AgeUByte)
 
     @ParameterizedTest
-    @MethodSource("engines")
+    @MethodSource(MappersConfig.ENGINES)
     fun test09_5_mappings_value_class_unumber(engine: String) {
         val from = Fr095(age = AgeUInt(10u))
-        val mapper = getMapper<Fr095, To095>(engine)
+        val mapper = MappersConfig.getMapper<Fr095, To095>(engine)
         val res = mapper.transform(from)
         assertEquals(AgeUByte(10u), res.age)
 
-        val mapper2 = getMapper<To095, Fr095>(engine)
+        val mapper2 = MappersConfig.getMapper<To095, Fr095>(engine)
         val res2 = mapper2.transform(res)
         assertEquals(AgeUInt(10u), res2.age)
     }

@@ -58,7 +58,7 @@ internal class LaMapperImpl(
     }
     internal val dataConverters = DataConverters(laConverterRegistry, config)
     internal val serviceContext = ServiceContext().apply { this.config = this@LaMapperImpl.config; this.dataConverters = this@LaMapperImpl.dataConverters }
-    internal val laMapperAsmCompiler = LaMapperAsmCompiler(serviceContext)
+    internal val laMapperAsmCompiler2 = LaMapperAsmCompiler2(serviceContext)
     internal val laMapperAsmCompiler3 = LaMapperAsmCompiler3(serviceContext)
 
     internal inner class AutoMapperImpl<Fr : Any, To : Any>(
@@ -89,13 +89,18 @@ internal class LaMapperImpl(
                             ?: struct.paramBinds.firstOrNull { it.sourcePropRd?.klass?.isValue == true }
                             ?: struct.propAutoBinds.firstOrNull { it.sourcePropRd.klass.isValue || it.targetPropWr.klass.isValue }
                             ?: struct.propManualBinds.firstOrNull { it.targetPropWr.klass.isValue }
-                        compiledAsmMapper = if (hasValueClass != null || config.disableSyntheticConstructorCall || config.disableFullCompile) {
-                            LaMapper.logger.debug("Use partial compile for $sourceType to $targetType mapper")
-                            laMapperAsmCompiler.compiledMapper(struct)
-                        } else {
-                            laMapperAsmCompiler3.compiledMapper(struct)
+                        try {
+                            compiledAsmMapper = if (hasValueClass != null || config.disableSyntheticConstructorCall || config.disableFullCompile) {
+                                LaMapper.logger.trace("Use partial compile for $sourceType to $targetType mapper")
+                                laMapperAsmCompiler2.compiledMapper(struct)
+                            } else {
+                                LaMapper.logger.trace("Use full compile for $sourceType to $targetType mapper")
+                                laMapperAsmCompiler3.compiledMapper(struct)
+                            }
+                            simpleReflectionAutoMapper = null // doesn't need anymore, cleanup
+                        } catch (e: Throwable) {
+                            LaMapper.logger.debug("Failed to compile mapper $sourceType to $targetType, use reflection mode. Error: ${e.message}")
                         }
-                        simpleReflectionAutoMapper = null // doesn't need anymore, cleanup
 
                         needToCompile = false
                     }
