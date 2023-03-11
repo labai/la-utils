@@ -21,17 +21,17 @@ import org.junit.jupiter.api.Test
  *  part - partial compiled mapper
  *  refl - reflection mapper
  *
- * kotlin 1.7.22, jvm 8
+ * kotlin 1.7.22
  *  1. Copy properties
- *  j8  pojo=1189, asgn=32, mapr=45, part=334, refl=1872
+ *  j8  pojo=902, asgn=27, mapr=40, part=271, refl=1763
  *  j17 pojo=1370, asgn=36, mapr=72, part=452, refl=1672
  *
  *  2. With map constructor (with optional arguments)
- *  j8  pojo=1092, asgn=45, mapr=39, part=395, refl=2639
+ *  j8  pojo=872, asgn=29, mapr=39, part=419, refl=2465
  *  j17 pojo=1264, asgn=65, mapr=76, part=624, refl=3341
  *
  *  3 With array constructor (when all arguments provided)
- *  j8  pojo=1160, asgn=34, mapr=39, part=399, refl=816
+ *  j8  pojo=1117, asgn=29, mapr=41, part=394, refl=780
  *  j17 pojo=1491, asgn=77, mapr=93, part=631, refl=1155
  *
  */

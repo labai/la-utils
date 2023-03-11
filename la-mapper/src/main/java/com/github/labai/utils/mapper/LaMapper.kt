@@ -56,7 +56,7 @@ class LaMapper(
 ) {
 
     internal val cache: ClassTrioMap<AutoMapper<*, *>> = ClassTrioMap()
-    internal val laMapperImpl = LaMapperImpl(laConverterRegistry, config)
+    private val laMapperImpl = LaMapperImpl(laConverterRegistry, config)
 
     interface ILaMapperConfig
 

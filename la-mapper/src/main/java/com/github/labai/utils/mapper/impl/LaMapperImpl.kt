@@ -98,7 +98,9 @@ internal class LaMapperImpl(
                                 laMapperAsmCompiler3.compiledMapper(struct)
                             }
                             simpleReflectionAutoMapper = null // doesn't need anymore, cleanup
-                        } catch (e: Throwable) {
+                        } catch (e: Exception) {
+                            if (config.failOnOptimizationError)
+                                throw e
                             LaMapper.logger.debug("Failed to compile mapper $sourceType to $targetType, use reflection mode. Error: ${e.message}")
                         }
 

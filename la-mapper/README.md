@@ -1,7 +1,11 @@
 ## la-mapper
 Data mapper for kotlin 
 
-`LaMapper.copyFrom(orig)`
+```
+LaMapper.copyFrom(orig) {
+  ...additional manual mappings...
+}
+```
 
 Create target object and fill values from `orig` object - automatically by name or manually. 
 In addition, datatype conversions will be applied to match target type.
@@ -53,22 +57,44 @@ Just add maven dependency
 <dependency>
     <groupId>com.github.labai.utils</groupId>
     <artifactId>la-mapper</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.1</version>
 </dependency>
 ```
 and use it.
 
 ### Features
-
-- create target object by calling primary constructor
-- fill other properties (non constructor arguments)
-- automatically map fields by name
+- uses **compiling** at runtime
+- creates a target object by calling a primary constructor, it can be kotlin constructor with default parameters
+  - argument can be mapped manually or automatically by field name
+- fills properties (non constructor parameters)
+  - can be mapped manually or automatically by field name
 - auto conversion between various data types:
-  - between numbers (int, long, short, byte, BigDecimal, double, float, Deci)
+  - between numbers (int, long, short, byte, BigDecimal, double, float, Deci), including kotlin unsigned numbers
   - between various date formats
   - enums - string 
   - boolean - number, string
-  - additional user data type converters
-- possible to add own mapping:
-  - simple field to field, or 
+  - value class
+- additional user defined data type conversion
+- possible mapping ways:
+  - simple field to field 
   - construct result value from original object
+
+### Performance
+LaMapper compiles code at runtime. So performance is similar to handwritten code.
+Same test examples in _test/java/performance_.
+
+| Case                        | Handwritten<br/>code | LaMapper | LaMapper<br/>reflection | 
+|-----------------------------|----------------------|----------|-------------------------|
+| Properties copy             | 27                   | **40**   | 1800                    | 
+| Constructor with defaults   | 29                   | **39**   | 2500                    |
+| Constructor with all params | 29                   | **41**   | 800                     |
+
+Test with copying of 1mi rows with 20 fields.
+Here:
+- _Handwritten code_ - hardcoded assigns. 
+- _LaMapper_ - LaMapper fully compiled copying.
+- _LaMapper reflection_ - LaMapper with reflection mode. It depends mostly on reflection performance.
+
+### Limitation
+- for simple classes, inheritance hierarchy is not supported
+- doesn't support collection mapping - usually it is better to map them manually using kotlin collection mapping functions

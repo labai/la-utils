@@ -49,9 +49,7 @@ internal class ReflectionAutoMapper<Fr : Any, To : Any>(
     private val struct: MappedStruct<Fr, To>,
     serviceContext: ServiceContext,
 ) : AutoMapper<Fr, To> {
-    private val objectCreator: ObjectCreator<Fr, To> =
-        ObjectCreator(struct.targetType, struct.targetConstructor, struct.paramBinds, serviceContext.config)
-    private val dataConverters = serviceContext.dataConverters
+    private val objectCreator: ObjectCreator<Fr, To> = ObjectCreator(struct.targetType, struct.targetConstructor, struct.paramBinds, serviceContext.config)
 
     override fun transform(from: Fr): To {
         val target: To = objectCreator.createObject(from)
@@ -72,15 +70,7 @@ internal class ReflectionAutoMapper<Fr : Any, To : Any>(
         while (++i < size) {
             val mapr = struct.propManualBinds[i]
             val valTo = mapr.manualMapping.mapper.invoke(from)
-            var valConv = if (valTo == null) {
-                null
-            } else if (mapr.manualMapping.sourceType == null) {
-                dataConverters.convertValue(valTo, mapr.targetPropWr.klass)
-            } else {
-                mapr.manualMapping.convNnFn.convertValOrNull(valTo)
-            }
-            if (valConv == null)
-                valConv = dataConverters.convertNull(mapr.targetPropWr.returnType)
+            val valConv = mapr.manualMapping.convNnFn.convertValNn(valTo)
             mapr.targetPropWr.setValue(target, valConv)
         }
         return target

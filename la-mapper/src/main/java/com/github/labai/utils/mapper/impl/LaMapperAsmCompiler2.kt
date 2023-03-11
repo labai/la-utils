@@ -167,16 +167,7 @@ internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) 
                 while (++i < size) {
                     val mapr = compiledPropManualBinds[i]
                     val valTo = mapr.manualMapping.mapper.invoke(from)
-                    var valConv = if (valTo == null) {
-                        null
-                    } else if (mapr.manualMapping.sourceType == null) {
-                        serviceContext.dataConverters.convertValue(valTo, mapr.targetPropWr.klass)
-                            ?: serviceContext.dataConverters.convertNull(mapr.targetPropWr.returnType)
-                    } else {
-                        mapr.manualMapping.convNnFn.convertValOrNull(valTo)
-                    }
-                    if (valConv == null) // todo replace to nn converter
-                        valConv = serviceContext.dataConverters.convertNull(mapr.targetPropWr.returnType)
+                    val valConv = mapr.manualMapping.convNnFn.convertValNn(valTo)
                     mapr.targetPropWr.setValue(target, valConv)
                 }
                 multiWriterMainMan?.writeValues(target)
