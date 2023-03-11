@@ -1,12 +1,20 @@
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
+import org.junit.jupiter.params.provider.MethodSource
+import java.util.stream.Stream
 
 /**
  * @author Augustus
  *         created on 2022.11.16
  */
 class LaMapperValueClassTest {
+
+    companion object {
+        @JvmStatic
+        private fun engines(): Stream<String>? {
+            return Stream.of("default", "reflect")
+        }
+    }
 
     // ----------------------------------------------------------------
 
@@ -29,7 +37,7 @@ class LaMapperValueClassTest {
     class To091(val age: Long)
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test09_1_mappings_value_class_value_to_primitive_arg(engine: String) {
         val from = Fr091(Age(10))
         val mapper = getMapper<Fr091, To091>(engine)
@@ -52,7 +60,7 @@ class LaMapperValueClassTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test09_2_mappings_value_class_value_to_primitive_prop(engine: String) {
         val from = Fr092().apply { age = Age(10) }
         val mapper = getMapper<Fr092, To092>(engine)
@@ -68,7 +76,7 @@ class LaMapperValueClassTest {
     class To093(val age: AgeS)
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test09_3_mappings_value_class_value_to_value_string(engine: String) {
         val from = Fr093(age = Age(10))
         val mapper = getMapper<Fr093, To093>(engine)
@@ -84,7 +92,7 @@ class LaMapperValueClassTest {
     class To094(val age: AgeX)
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test09_4_mappings_value_class_value_to_value(engine: String) {
         val from = Fr094(age = Age(10))
 
@@ -111,7 +119,7 @@ class LaMapperValueClassTest {
     class To095(val age: AgeUByte)
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "compile"])
+    @MethodSource("engines")
     fun test09_5_mappings_value_class_unumber(engine: String) {
         val from = Fr095(age = AgeUInt(10u))
         val mapper = getMapper<Fr095, To095>(engine)

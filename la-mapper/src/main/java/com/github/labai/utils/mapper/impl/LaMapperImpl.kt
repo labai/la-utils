@@ -58,7 +58,6 @@ internal class LaMapperImpl(
     }
     internal val dataConverters = DataConverters(laConverterRegistry, config)
     internal val serviceContext = ServiceContext().apply { this.config = this@LaMapperImpl.config; this.dataConverters = this@LaMapperImpl.dataConverters }
-    internal val laMapperScriptCompiler = LaMapperScriptCompiler(serviceContext)
     internal val laMapperAsmCompiler = LaMapperAsmCompiler(serviceContext)
     internal val laMapperAsmCompiler3 = LaMapperAsmCompiler3(serviceContext)
 
@@ -71,10 +70,9 @@ internal class LaMapperImpl(
         internal lateinit var struct: MappedStruct<Fr, To>
         private val isInitialized = AtomicBoolean(false)
 
-        private var needToCompile = config.tryScriptCompile || config.useCompile
+        private var needToCompile = !config.disableCompile
         private var counter: Int = 0
         private var simpleReflectionAutoMapper: AutoMapper<Fr, To>? = null
-        private var compiledScriptMapper: AutoMapper<Fr, To>? = null
         private var compiledAsmMapper: AutoMapper<Fr, To>? = null
 
         internal fun init() {
@@ -87,25 +85,18 @@ internal class LaMapperImpl(
             if (needToCompile && ++counter > config.startCompileAfterIterations) {
                 synchronized(this) {
                     if (needToCompile) {
-                        if (config.tryScriptCompile) {
-                            CompilerQueue.addTask(laMapperScriptCompiler, this.struct) { compiled ->
-                                if (compiled != null) {
-                                    compiledScriptMapper = compiled
-                                }
-                            }
-                        } else if (config.useCompile) {
-                            val hasValueClass = struct.paramBinds.firstOrNull { (it.param.type.classifier as KClass<*>).isValue }
-                                ?: struct.paramBinds.firstOrNull { it.sourcePropRd?.klass?.isValue == true }
-                                ?: struct.propAutoBinds.firstOrNull { it.sourcePropRd.klass.isValue || it.targetPropWr.klass.isValue }
-                                ?: struct.propManualBinds.firstOrNull { it.targetPropWr.klass.isValue }
-                            compiledAsmMapper = if (hasValueClass != null || config.disableSyntheticConstructorCall || config.disableFullCompile) {
-                                LaMapper.logger.debug("Use partial compile for $sourceType to $targetType mapper")
-                                laMapperAsmCompiler.compiledMapper(struct)
-                            } else {
-                                laMapperAsmCompiler3.compiledMapper(struct)
-                            }
-                            simpleReflectionAutoMapper = null // doesn't need anymore, cleanup
+                        val hasValueClass = struct.paramBinds.firstOrNull { (it.param.type.classifier as KClass<*>).isValue }
+                            ?: struct.paramBinds.firstOrNull { it.sourcePropRd?.klass?.isValue == true }
+                            ?: struct.propAutoBinds.firstOrNull { it.sourcePropRd.klass.isValue || it.targetPropWr.klass.isValue }
+                            ?: struct.propManualBinds.firstOrNull { it.targetPropWr.klass.isValue }
+                        compiledAsmMapper = if (hasValueClass != null || config.disableSyntheticConstructorCall || config.disableFullCompile) {
+                            LaMapper.logger.debug("Use partial compile for $sourceType to $targetType mapper")
+                            laMapperAsmCompiler.compiledMapper(struct)
+                        } else {
+                            laMapperAsmCompiler3.compiledMapper(struct)
                         }
+                        simpleReflectionAutoMapper = null // doesn't need anymore, cleanup
+
                         needToCompile = false
                     }
                 }
@@ -114,10 +105,6 @@ internal class LaMapperImpl(
 
         override fun transform(from: Fr): To {
             init()
-
-            if (compiledScriptMapper != null) {
-                return compiledScriptMapper!!.transform(from)
-            }
 
             if (compiledAsmMapper != null) {
                 return compiledAsmMapper!!.transform(from)

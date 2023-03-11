@@ -18,7 +18,7 @@ class LaMapperTest {
     companion object {
         @JvmStatic
         private fun engines(): Stream<String>? {
-            return Stream.of("default", "reflect", "nosynth", "compile")
+            return Stream.of("default", "reflect", "nosynth")
         }
     }
 

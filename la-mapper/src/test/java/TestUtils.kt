@@ -3,7 +3,6 @@ import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.LaMapper
 import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
 import com.github.labai.utils.mapper.LaMapper.MappingBuilder
-import com.github.labai.utils.mapper.impl.LaMapperImpl.AutoMapperImpl
 import com.google.gson.GsonBuilder
 
 /*
@@ -17,11 +16,11 @@ private val defaultLaMapper = LaMapper(
 )
 private val reflectionLaMapper = LaMapper(
     LaConverterRegistry.global,
-    LaMapperConfig().copy(useCompile = false, disableSyntheticConstructorCall = true, startCompileAfterIterations = 0, failOnOptimizationError = true),
+    LaMapperConfig().copy(disableCompile = true, disableSyntheticConstructorCall = true, startCompileAfterIterations = 0, failOnOptimizationError = true),
 )
 private val noSynthConLaMapper = LaMapper(
     LaConverterRegistry.global,
-    LaMapperConfig().copy(useCompile = true, disableSyntheticConstructorCall = true, startCompileAfterIterations = 0, failOnOptimizationError = true),
+    LaMapperConfig().copy(disableCompile = true, disableSyntheticConstructorCall = true, startCompileAfterIterations = 0, failOnOptimizationError = true),
 )
 private val gson = GsonBuilder().setPrettyPrinting().create()
 
@@ -40,11 +39,6 @@ internal inline fun <reified Fr : Any, reified To : Any> getMapper(
 
         "nosynth" -> {
             noSynthConLaMapper.autoMapper(mapping)
-        }
-
-        "compile" -> {
-            val mapperx = defaultLaMapper.autoMapper(mapping) as AutoMapperImpl
-            LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapperx)!!
         }
 
         "default" -> {

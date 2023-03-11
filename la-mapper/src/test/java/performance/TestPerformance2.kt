@@ -4,7 +4,6 @@ import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.LaMapper
 import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
-import com.github.labai.utils.mapper.impl.LaMapperImpl.AutoMapperImpl
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
@@ -19,20 +18,21 @@ import java.math.BigDecimal
  *
 */
 class TestPerformance2 {
-    private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(useCompile = false))
+    private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(disableCompile = true))
+    private val partialCompiledFactory = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(disableFullCompile = true))
 
     @Test
     @Disabled
     fun test_performance_mixed() {
         val defaultMapper = getMapper(LaMapper.global)
         val reflectionMapper = getMapper(reflectionLaMapper)
-        val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(reflectionMapper as AutoMapperImpl)!!
+        val partialCompiledMapper: AutoMapper<From, To> = partialCompiledFactory.autoMapper()
         PerfHelper.testForClasses(
             createFromFn = { createFrom(it) },
             createToFn = { fr -> To(fr.aaa.toInt(), fr.fld2, fr.fld3, fr.fld4) },
             mapperFn = { fr -> defaultMapper.transform(fr) },
             assignFn = { fr -> To.copyFromFrom(fr) },
-            partialFn = { fr -> compiledMapper.transform(fr) },
+            partialFn = { fr -> partialCompiledMapper.transform(fr) },
             reflectionFn = { fr -> reflectionMapper.transform(fr) },
         )
     }

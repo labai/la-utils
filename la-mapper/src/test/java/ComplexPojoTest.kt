@@ -16,7 +16,7 @@ import kotlin.reflect.KProperty1
 class ComplexPojoTest {
 
     @ParameterizedTest
-    @ValueSource(strings = ["default", "reflect", "nosynth", "compile"])
+    @ValueSource(strings = ["default", "reflect", "nosynth"])
     fun test_assign(engine: String) {
         val mapper = getMapper<FrX, ToX>(engine) {
             ToX::f02i from FrX::f01i

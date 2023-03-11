@@ -41,7 +41,7 @@ import org.junit.jupiter.api.Test
 @Suppress("unused")
 @Disabled
 class TestPerformance1 {
-    private val reflectionFactory = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(useCompile = false, disableSyntheticConstructorCall = true))
+    private val reflectionFactory = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(disableCompile = true, disableSyntheticConstructorCall = true))
     private val partialCompiledFactory = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(disableFullCompile = true))
 
     @BeforeEach
@@ -54,7 +54,6 @@ class TestPerformance1 {
         val mapper: AutoMapper<From, To1Prop> = LaMapper.autoMapper()
         val reflectionMapper: AutoMapper<From, To1Prop> = reflectionFactory.autoMapper()
         val partialCompiledMapper: AutoMapper<From, To1Prop> = partialCompiledFactory.autoMapper()
-        // val scriptCompiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
         println("Start test 1")
         PerfHelper.testForClasses(
@@ -72,7 +71,6 @@ class TestPerformance1 {
         val mapper: AutoMapper<From, To2CMap> = LaMapper.autoMapper()
         val reflectionMapper: AutoMapper<From, To2CMap> = reflectionFactory.autoMapper()
         val partialCompiledMapper: AutoMapper<From, To2CMap> = partialCompiledFactory.autoMapper()
-        // val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
         println("Start test 2")
         PerfHelper.testForClasses(
@@ -90,7 +88,6 @@ class TestPerformance1 {
         val mapper: AutoMapper<From, To3CArr> = LaMapper.autoMapper()
         val reflectionMapper: AutoMapper<From, To3CArr> = reflectionFactory.autoMapper()
         val partialCompiledMapper: AutoMapper<From, To3CArr> = partialCompiledFactory.autoMapper()
-        // val compiledMapper = LaMapper.global.laMapperImpl.laMapperScriptCompiler.compiledMapper(mapper as AutoMapperImpl)!!
 
         println("Start test 3")
         PerfHelper.testForClasses(

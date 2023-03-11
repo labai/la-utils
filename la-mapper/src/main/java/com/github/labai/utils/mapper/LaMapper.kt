@@ -29,7 +29,6 @@ import com.github.labai.utils.mapper.impl.ClassTrioMap
 import com.github.labai.utils.mapper.impl.LaMapperImpl
 import com.github.labai.utils.mapper.impl.LaMapperImpl.ManualMapping
 import org.slf4j.LoggerFactory
-import javax.script.ScriptEngineFactory
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.KVisibility
@@ -56,13 +55,6 @@ class LaMapper(
     config: ILaMapperConfig = LaMapperConfig(),
 ) {
 
-    // in case consumer wants to use runtime-compile and can provide scripting engine
-    var kotlinScriptEngineFactory: ScriptEngineFactory?
-        get() = laMapperImpl.laMapperScriptCompiler.kotlinScriptEngineFactory
-        set(engineFactory) {
-            laMapperImpl.laMapperScriptCompiler.kotlinScriptEngineFactory = engineFactory
-        }
-
     internal val cache: ClassTrioMap<AutoMapper<*, *>> = ClassTrioMap()
     internal val laMapperImpl = LaMapperImpl(laConverterRegistry, config)
 
@@ -73,10 +65,9 @@ class LaMapper(
         internal val autoConvertNullToString: Boolean = true, // do auto-convert null to "" for non-nullable Strings
         internal val autoConvertValueClass: Boolean = true, // convert value class to/from primitives
         internal val autoConvertValueValue: Boolean = true, // convert between different value classes - even if we can, it may violate idea of value classes
-        internal val tryScriptCompile: Boolean = false, // try to kotlin-compile
-        internal val useCompile: Boolean = true, // try to compile to jvm
         internal val startCompileAfterIterations: Int = 1000, // start to compile after n iterations
         internal val visibilities: Set<KVisibility> = setOf(PUBLIC, INTERNAL),
+        internal val disableCompile: Boolean = false, // disable compile to jvm
         internal val disableSyntheticConstructorCall: Boolean = false, // disable direct kotlin synthetic constructor usage for optional parameters
         internal val disableFullCompile: Boolean = false, // disable full compile (used for tests)
         internal val failOnOptimizationError: Boolean = false, // in case of optimization failure throw an error and don't try to use reflection

@@ -55,34 +55,6 @@
             <version>${kotlin.version}</version>
         </dependency>
 
-        <!-- for runtime compile
-            disabled by default
-        -->
-        <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-compiler</artifactId>
-            <version>${kotlin.version}</version>
-            <!--<scope>provided</scope>-->
-            <optional>true</optional>
-        </dependency>
-
-        <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-script-util</artifactId>
-            <version>${kotlin.version}</version>
-            <!--<scope>provided</scope>-->
-            <optional>true</optional>
-        </dependency>
-
-        <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-scripting-compiler</artifactId>
-            <version>${kotlin.version}</version>
-            <!--<scope>provided</scope>-->
-            <optional>true</optional>
-        </dependency>
-        <!-- end runtime compile -->
-
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
