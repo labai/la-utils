@@ -3,7 +3,7 @@ Data mapper for kotlin
 
 ```
 LaMapper.copyFrom(orig) {
-  ...additional manual mappings...
+  // with additional manual mappings
 }
 ```
 
@@ -64,7 +64,7 @@ and use it.
 
 ### Features
 - uses **compiling** at runtime
-- creates a target object by calling a primary constructor, it can be kotlin constructor with default parameters
+- creates a target object by calling a primary constructor, kotlin constructors with default parameters also are supported
   - argument can be mapped manually or automatically by field name
 - fills properties (non constructor parameters)
   - can be mapped manually or automatically by field name
@@ -80,20 +80,19 @@ and use it.
   - construct result value from original object
 
 ### Performance
-LaMapper compiles code at runtime. So performance is similar to handwritten code.
+LaMapper compiles a mapping code at runtime. So performance is similar to handwritten code.
 Same test examples in _test/java/performance_.
 
-| Case                        | Handwritten<br/>code | LaMapper | LaMapper<br/>reflection | 
+| Case                        | Handwritten<br/>code | LaMapper | Reflection              | 
 |-----------------------------|----------------------|----------|-------------------------|
 | Properties copy             | 27                   | **40**   | 1800                    | 
 | Constructor with defaults   | 29                   | **39**   | 2500                    |
 | Constructor with all params | 29                   | **41**   | 800                     |
 
-Test with copying of 1mi rows with 20 fields.
-Here:
+Testing is done by copying of 1mi rows with 20 fields. Here is time in miliseconds:
 - _Handwritten code_ - hardcoded assigns. 
-- _LaMapper_ - LaMapper fully compiled copying.
-- _LaMapper reflection_ - LaMapper with reflection mode. It depends mostly on reflection performance.
+- _LaMapper_ - LaMapper compiled mapper (default mode).
+- _Reflection_ - alternative LaMapper mode - with pure reflection. It mostly depends on reflection performance.
 
 ### Limitation
 - for simple classes, inheritance hierarchy is not supported
