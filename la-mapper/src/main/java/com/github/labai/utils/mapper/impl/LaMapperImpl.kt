@@ -67,18 +67,17 @@ internal class LaMapperImpl(
         private var manualMappings: Map<String, ManualMapping<Fr>> = mapOf(),
     ) : AutoMapper<Fr, To> {
 
+        private lateinit var activeMapper: AutoMapper<Fr, To>
         internal lateinit var struct: MappedStruct<Fr, To>
         private val isInitialized = AtomicBoolean(false)
 
         private var needToCompile = !config.disableCompile
         private var counter: Int = 0
-        private var simpleReflectionAutoMapper: AutoMapper<Fr, To>? = null
-        private var compiledAsmMapper: AutoMapper<Fr, To>? = null
 
         internal fun init() {
             if (isInitialized.compareAndSet(false, true)) {
                 struct = MappedStruct(sourceType, targetType, manualMappings, serviceContext)
-                simpleReflectionAutoMapper = ReflectionAutoMapper(struct, serviceContext)
+                activeMapper = ReflectionAutoMapper(struct, serviceContext)
                 manualMappings = mapOf() // cleanup
             }
 
@@ -90,14 +89,13 @@ internal class LaMapperImpl(
                             ?: struct.propAutoBinds.firstOrNull { it.sourcePropRd.klass.isValue || it.targetPropWr.klass.isValue }
                             ?: struct.propManualBinds.firstOrNull { it.targetPropWr.klass.isValue }
                         try {
-                            compiledAsmMapper = if (hasValueClass != null || config.disableSyntheticConstructorCall || config.disableFullCompile) {
+                            activeMapper = if (hasValueClass != null || config.disableSyntheticConstructorCall || config.disableFullCompile) {
                                 LaMapper.logger.trace("Use partial compile for $sourceType to $targetType mapper")
                                 laMapperAsmCompiler2.compiledMapper(struct)
                             } else {
                                 LaMapper.logger.trace("Use full compile for $sourceType to $targetType mapper")
                                 laMapperAsmCompiler3.compiledMapper(struct)
                             }
-                            simpleReflectionAutoMapper = null // doesn't need anymore, cleanup
                         } catch (e: Exception) {
                             if (config.failOnOptimizationError)
                                 throw e
@@ -112,16 +110,7 @@ internal class LaMapperImpl(
 
         override fun transform(from: Fr): To {
             init()
-
-            if (compiledAsmMapper != null) {
-                return compiledAsmMapper!!.transform(from)
-            }
-
-            if (simpleReflectionAutoMapper != null) {
-                return simpleReflectionAutoMapper!!.transform(from)
-            }
-
-            throw IllegalStateException("Internal autoMapper is not initialized")
+            return activeMapper.transform(from)
         }
     }
 
@@ -135,21 +124,29 @@ internal class LaMapperImpl(
 }
 
 internal class ClassTrioMap<T> {
-    private val map: MutableMap<ClassTrio, T> = ConcurrentHashMap()
+    private val map: MutableMap<ClassTrio, Pair<ClassTrio, T>> = ConcurrentHashMap()
 
     private data class ClassTrio(val source: KClass<*>, val target: KClass<*>, val mapper: KClass<*>?)
+    private var last: Pair<ClassTrio, T>? = null
 
     fun <Fr : Any, To : Any> getOrPut(sourceType: KClass<Fr>, targetType: KClass<To>, mapperClass: KClass<*>?, itemFn: Supplier<T>): T {
+        val last = last
+        if (last != null && last.first.source === sourceType && last.first.target === targetType && last.first.mapper === mapperClass) {
+            return last.second
+        }
         val key = ClassTrio(sourceType, targetType, mapperClass)
         val value = map[key]
-        if (value != null) return value
+        if (value != null) {
+            this.last = value
+            return value.second
+        }
         synchronized(map) {
-            return map.computeIfAbsent(key) { itemFn.get() }
+            return map.computeIfAbsent(key) { key to itemFn.get() }.second
         }
     }
 
     operator fun <Fr : Any, To : Any> get(sourceType: KClass<Fr>, targetType: KClass<To>, mapperClass: KClass<*>?): T? {
-        return map[ClassTrio(sourceType, targetType, mapperClass)]
+        return map[ClassTrio(sourceType, targetType, mapperClass)]?.second
     }
 
     @TestOnly

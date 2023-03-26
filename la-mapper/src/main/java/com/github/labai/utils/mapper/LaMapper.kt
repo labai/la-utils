@@ -120,7 +120,7 @@ class LaMapper(
         mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
     ): To {
         @Suppress("UNCHECKED_CAST")
-        val mapper = cache.getOrPut(from::class, targetType, if (mapping == null) null else mapping::class) {
+        val mapper = cache.getOrPut(sourceType, targetType, if (mapping == null) null else mapping::class) {
             autoMapper(sourceType, targetType, mapping)
         } as AutoMapper<Fr, To>
         return mapper.transform(from)
