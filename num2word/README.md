@@ -1,10 +1,11 @@
 # Number to words converters
 
 Supports:
-- English
-- Lithuanian
-- Latvian
-- Estonian
+- Lithuanian,
+- Latvian,
+- Estonian,
+- English,
+- Russian.
 
 ```java
 NumberToWordConverter.numberToWords(123, "lt");
