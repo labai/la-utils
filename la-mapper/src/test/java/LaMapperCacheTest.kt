@@ -8,18 +8,18 @@ import org.junit.jupiter.api.Test
  */
 class LaMapperCacheTest {
 
-    class From(val value: Int)
-    class To(val value: String)
+    class DtoFrom(val value: Int)
+    class DtoTo(val value: String)
 
     @Test
     internal fun test_few_mappers_caching() {
         val initialSize = LaMapper.global.cache.getMapSize()
-        val from = From(5)
+        val from = DtoFrom(5)
         val to1 = LaMapper.copyFrom(from) {
-            To::value from { "A=${it.value}" }
+            DtoTo::value from { "A=${it.value}" }
         }
         val to2 = LaMapper.copyFrom(from) {
-            To::value from { "B=${it.value}" }
+            DtoTo::value from { "B=${it.value}" }
         }
 
         assertEquals("A=5", to1.value)
@@ -29,13 +29,13 @@ class LaMapperCacheTest {
 
         for (i in 1..2) {
             LaMapper.copyFrom(from) {
-                To::value from { "C=${it.value}" }
+                DtoTo::value from { "C=${it.value}" }
             }
         }
         assertEquals(3, LaMapper.global.cache.getMapSize() - initialSize)
 
         for (i in 1..2) {
-            LaMapper.copyFrom<From, To>(from)
+            LaMapper.copyFrom<DtoFrom, DtoTo>(from)
         }
         assertEquals(4, LaMapper.global.cache.getMapSize() - initialSize)
     }

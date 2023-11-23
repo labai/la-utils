@@ -64,7 +64,7 @@ internal class LaMapperImpl(
     internal inner class AutoMapperImpl<Fr : Any, To : Any>(
         private val sourceType: KClass<Fr>,
         private val targetType: KClass<To>,
-        private var manualMappings: Map<String, ManualMapping<Fr>> = mapOf(),
+        private var manualMappings: Map<String, IMappingBuilderItem<Fr>> = mapOf(),
     ) : AutoMapper<Fr, To> {
 
         private lateinit var activeMapper: AutoMapper<Fr, To>
@@ -76,7 +76,13 @@ internal class LaMapperImpl(
 
         internal fun init() {
             if (isInitialized.compareAndSet(false, true)) {
-                struct = MappedStruct(sourceType, targetType, manualMappings, serviceContext)
+                struct = MappedStruct(
+                    sourceType,
+                    targetType,
+                    manualMappings.filter { it.value is PropMapping }.mapValues { it.value as PropMapping },
+                    manualMappings.filter { it.value is LambdaMapping }.mapValues { it.value as LambdaMapping },
+                    serviceContext
+                )
                 activeMapper = ReflectionAutoMapper(struct, serviceContext)
                 manualMappings = mapOf() // cleanup
             }
@@ -114,14 +120,21 @@ internal class LaMapperImpl(
         }
     }
 
-    internal class ManualMapping<Fr>(
+    internal interface IMappingBuilderItem<Fr>
+
+    internal class LambdaMapping<Fr>(
         val mapper: ManualFn<Fr>,
-        val sourceType: KType?, // type of lambda return
-    ) {
+        val sourceType: KType? // type of lambda return
+    ) : IMappingBuilderItem<Fr> {
         internal var convNnFn: ConvFn? = null
         internal var targetType: KType? = null
     }
+
+    internal class PropMapping<Fr>(
+        val frName: String,
+    ) : IMappingBuilderItem<Fr>
 }
+
 
 internal class ClassTrioMap<T> {
     private val map: MutableMap<ClassTrio, Pair<ClassTrio, T>> = ConcurrentHashMap()

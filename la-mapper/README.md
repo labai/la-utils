@@ -29,7 +29,7 @@ data class PersonDto(
 )
 
 // it is a good style to write converter as extension function
-fun Person.toPersonDto() = LaMapper.copyFrom(this) {
+fun Person.toPersonDto(): PersonDto = LaMapper.copyFrom(this) {
     PersonDto::code from Person::personCode
     PersonDto::name from { "${it.firstName} ${it.surname}" }
 }
@@ -97,3 +97,29 @@ Testing is done by copying of 1mi rows with 20 fields. Here is time in milisecon
 ### Limitation
 - for simple classes, inheritance hierarchy is not supported
 - doesn't support collection mapping - usually it is better to map them manually using kotlin collection mapping functions
+
+### Additional features
+
+#### Helpers `f` and `t` for method references
+
+A long class names mapping may look bit clumsy, e.g. 
+
+```kotlin
+fun HighlyRespectedPerson.toPersonDto(): PersonApiResponseDto = LaMapper.copyFrom(this) {
+    PersonApiResponseDto::code from HighlyRespectedPerson::personCode
+    PersonApiResponseDto::name from HighlyRespectedPerson::fullName
+}
+```
+So now it is possible to write the mapping in a shorter manner
+```kotlin
+fun HighlyRespectedPerson.toPersonDto(): PersonApiResponseDto = LaMapper.copyFrom(this) {
+    t::code from f::personCode
+    t::name from f::fullName
+}
+```
+Special pseudo-variables are used here:
+- `t` - for accessing target ("to) class fields
+- `f` - for accessing source ("from") class fields
+
+Btw, they are created for field references only and can't be used directly as object, 
+i.e. trying to write `t.code = f.personCode` would cause an error. 

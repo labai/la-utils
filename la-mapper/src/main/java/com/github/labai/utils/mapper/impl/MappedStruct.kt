@@ -26,10 +26,10 @@ package com.github.labai.utils.mapper.impl
 import com.github.labai.utils.convert.ITypeConverter
 import com.github.labai.utils.hardreflect.LaHardReflect.NameOrAccessor
 import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
-import com.github.labai.utils.mapper.impl.LaMapperImpl.ManualMapping
+import com.github.labai.utils.mapper.impl.LaMapperImpl.LambdaMapping
+import com.github.labai.utils.mapper.impl.LaMapperImpl.PropMapping
 import com.github.labai.utils.mapper.impl.PropAccessUtils.PropertyReader
 import com.github.labai.utils.mapper.impl.PropAccessUtils.PropertyWriter
-import java.lang.IllegalStateException
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KMutableProperty1
@@ -52,72 +52,33 @@ import kotlin.reflect.jvm.javaMethod
 internal class MappedStruct<Fr : Any, To : Any>(
     internal val sourceType: KClass<Fr>,
     internal val targetType: KClass<To>,
-    private val manualMappers: Map<String, ManualMapping<Fr>> = mapOf(),
+    private val propMappers: Map<String, PropMapping<Fr>>,
+    private val manualMappers: Map<String, LambdaMapping<Fr>>,
     serviceContext: ServiceContext,
 ) {
     internal val targetConstructor: KFunction<To>? = targetType.primaryConstructor
-    internal lateinit var paramBinds: Array<ParamBind<Fr>>
-    internal lateinit var propAutoBinds: Array<PropAutoBind<Fr, To>>
-    internal lateinit var propManualBinds: Array<PropManualBind<Fr, To>>
+    internal val paramBinds: Array<ParamBind<Fr>>
+    internal val propAutoBinds: Array<PropAutoBind<Fr, To>>
+    internal val propManualBinds: Array<PropManualBind<Fr, To>>
     internal var areAllParams: Boolean = false
         private set
     private val dataConverters: DataConverters = serviceContext.dataConverters
     private val config: LaMapperConfig = serviceContext.config
 
     init {
-        init()
-    }
 
-    // for constructor parameters
-    internal class ParamBind<Fr>(
-        internal val param: KParameter,
-        internal val manualMapping: ManualMapping<Fr>?,
-        internal val sourcePropRd: PropertyReader<Fr>?, // may be replaced to compiled
-        internal val convFn: ConvFn?,
-        internal val dataConverters: DataConverters,
-    ) {
-        private val paramType = param.type
-        private val paramKlass = paramType.classifier as KClass<*>
-
-        internal fun mapParam(from: Fr): Any? {
-            val value = if (sourcePropRd != null) {
-                sourcePropRd.getValue(from)
-            } else if (manualMapping != null) {
-                manualMapping.mapper.invoke(from)
-            } else {
-                throw NullPointerException("ParamMapper must have manualMapper or sourceProp not null")
-            }
-            return if (manualMapping != null && manualMapping.sourceType == null) { // lambdas with unknown return type - convert based on return result
-                dataConverters.convertValue(value, paramKlass)
-            } else {
-                convFn.convertValOrNull(value)
-            } ?: dataConverters.convertNull(param.type)
-        }
-    }
-
-    internal class PropAutoBind<Fr, To>(
-        val sourcePropRd: PropertyReader<Fr>,
-        val targetPropWr: PropertyWriter<To>,
-        val convNnFn: ConvFn?,
-    )
-
-    internal class PropManualBind<Fr : Any, To : Any>(
-        val targetPropWr: PropertyWriter<To>,
-        val manualMapping: ManualMapping<Fr>,
-    )
-
-    private fun init() {
         val sourcePropsByName: Map<String, PropertyReader<Fr>> = getSourceMemberProps(sourceType)
             .associateBy { it.name }
         val targetFieldMap: Map<String, PropertyWriter<To>> = getTargetMemberProps(targetType)
             .associateBy { it.name }
         val targetArgsMandatory: Array<KParameter> = targetConstructor?.parameters
-            ?.filter { it.name in manualMappers || it.name in sourcePropsByName || !it.isOptional }
+            ?.filter { it.name in manualMappers || it.name in propMappers || it.name in sourcePropsByName || !it.isOptional }
             ?.toTypedArray()
             ?: arrayOf() // may be null for Java classes - then will use no-arg constructor
 
-        propAutoBinds = initPropAutoMappers(sourceType, targetType, skip = manualMappers.keys + targetArgsMandatory.mapNotNull { it.name })
-            .toTypedArray()
+        val autoProp = initPropAutoMappers(sourceType, targetType, skip = manualMappers.keys + propMappers.keys + targetArgsMandatory.mapNotNull { it.name })
+        val manProp = initPropManualMappers(sourceType, targetType, propMappers)
+        propAutoBinds = (autoProp + manProp).toTypedArray()
 
         propManualBinds = manualMappers.filter { arg -> targetConstructor?.parameters?.none { it.name == arg.key } ?: true }
             .filter { it.key in targetFieldMap }
@@ -131,7 +92,8 @@ internal class MappedStruct<Fr : Any, To : Any>(
             if (manMapper != null) {
                 ParamBind(param, manMapper, null, manMapper.convNnFn, dataConverters)
             } else {
-                val prop = sourcePropsByName[param.name]
+                val frName = propMappers[param.name]?.frName ?: param.name
+                val prop = sourcePropsByName[frName]
                 if (prop == null && !param.isOptional)
                     throw IllegalArgumentException("Parameter '${param.name}' is missing")
                 if (prop == null) {
@@ -147,6 +109,44 @@ internal class MappedStruct<Fr : Any, To : Any>(
 
         areAllParams = targetConstructor != null && paramBinds.size == targetConstructor.parameters.size
     }
+
+    // for constructor parameters
+    internal class ParamBind<Fr>(
+        internal val param: KParameter,
+        internal val lambdaMapping: LambdaMapping<Fr>?,
+        internal val sourcePropRd: PropertyReader<Fr>?, // may be replaced to compiled
+        internal val convFn: ConvFn?,
+        internal val dataConverters: DataConverters,
+    ) {
+        private val paramType = param.type
+        private val paramKlass = paramType.classifier as KClass<*>
+
+        internal fun mapParam(from: Fr): Any? {
+            val value = if (sourcePropRd != null) {
+                sourcePropRd.getValue(from)
+            } else if (lambdaMapping != null) {
+                lambdaMapping.mapper.invoke(from)
+            } else {
+                throw NullPointerException("ParamMapper must have manualMapper or sourceProp not null")
+            }
+            return if (lambdaMapping != null && lambdaMapping.sourceType == null) { // lambdas with unknown return type - convert based on return result
+                dataConverters.convertValue(value, paramKlass)
+            } else {
+                convFn.convertValOrNull(value)
+            } ?: dataConverters.convertNull(param.type)
+        }
+    }
+
+    internal class PropAutoBind<Fr, To>(
+        val sourcePropRd: PropertyReader<Fr>,
+        val targetPropWr: PropertyWriter<To>,
+        val convNnFn: ConvFn?,
+    )
+
+    internal class PropManualBind<Fr : Any, To : Any>(
+        val targetPropWr: PropertyWriter<To>,
+        val lambdaMapping: LambdaMapping<Fr>,
+    )
 
     private fun initManualMapperDataConverters(targetFieldMap: Map<String, PropertyWriter<To>>, dataConverters: DataConverters) {
         val paramMap = targetConstructor?.parameters?.associateBy { it.name } ?: mapOf()
@@ -218,6 +218,29 @@ internal class MappedStruct<Fr : Any, To : Any>(
             .filter { it.name in propsFr }
             .map {
                 val pfr = propsFr[it.name]!!
+                val convNnFn = dataConverters.getConverterNn(pfr.klass, it.klass, it.returnType.isMarkedNullable)
+                PropAutoBind(
+                    sourcePropRd = pfr,
+                    targetPropWr = it,
+                    convNnFn = convNnFn,
+                )
+            }
+    }
+
+    private fun initPropManualMappers(
+        sourceClass: KClass<Fr>,
+        targetClass: KClass<To>,
+        propMappers: Map<String, PropMapping<Fr>>,
+    ): List<PropAutoBind<Fr, To>> {
+        val frPropNames = propMappers.values.map { it.frName }.toSet()
+        val toPropNames = propMappers.keys
+        val propsFr: Map<String, PropertyReader<Fr>> = getSourceMemberProps(sourceClass)
+            .filter { it.name in frPropNames }
+            .associateBy { it.name }
+        return getTargetMemberProps(targetClass)
+            .filter { it.name in toPropNames }
+            .map {
+                val pfr = propsFr[propMappers[it.name]!!.frName]!!
                 val convNnFn = dataConverters.getConverterNn(pfr.klass, it.klass, it.returnType.isMarkedNullable)
                 PropAutoBind(
                     sourcePropRd = pfr,

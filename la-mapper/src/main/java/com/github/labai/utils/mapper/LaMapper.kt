@@ -27,10 +27,17 @@ import com.github.labai.utils.convert.IConverterResolver
 import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.impl.ClassTrioMap
 import com.github.labai.utils.mapper.impl.LaMapperImpl
-import com.github.labai.utils.mapper.impl.LaMapperImpl.ManualMapping
+import com.github.labai.utils.mapper.impl.LaMapperImpl.IMappingBuilderItem
+import com.github.labai.utils.mapper.impl.LaMapperImpl.LambdaMapping
+import com.github.labai.utils.mapper.impl.LaMapperImpl.PropMapping
 import org.slf4j.LoggerFactory
+import java.lang.IllegalStateException
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 import kotlin.reflect.KClass
+import kotlin.reflect.KProperty0
 import kotlin.reflect.KProperty1
+import kotlin.reflect.KType
 import kotlin.reflect.KVisibility
 import kotlin.reflect.KVisibility.INTERNAL
 import kotlin.reflect.KVisibility.PUBLIC
@@ -44,7 +51,7 @@ import kotlin.reflect.jvm.reflect
  * https://github.com/labai/la-utils/tree/main/la-mapper
  *
  * usage e.g.
- *  val result: ResultDto = LaMapper.copyFrom(from) {
+ *  val result: ResultDto: PersonDto = LaMapper.copyFrom(from) {
  *      ResultDto::personId from Source::id
  *      ResultDto::address from { "${it.address}, Vilnius" }
  *  }
@@ -140,21 +147,83 @@ class LaMapper(
         }
     }
 
-    open class MappingBuilder<Fr, To> {
-        internal val map: MutableMap<String, ManualMapping<Fr>> = mutableMapOf()
+    @JvmName("copyFromJ")
+    internal fun <Fr : Any, To : Any> copyFromJ(
+        from: Fr,
+        sourceType: Class<Fr>,
+        targetType: Class<To>,
+    ): To {
+        @Suppress("UNCHECKED_CAST")
+        val mapper = cache.getOrPut(sourceType.kotlin, targetType.kotlin, null) {
+            autoMapper(sourceType.kotlin, targetType.kotlin, null)
+        } as AutoMapper<Fr, To>
+        return mapper.transform(from)
+    }
+
+    @JvmName("autoMapperJ")
+    internal fun <Fr : Any, To : Any> autoMapperJ(sourceType: Class<Fr>, targetType: Class<To>): AutoMapper<Fr, To> {
+        return autoMapper(sourceType.kotlin, targetType.kotlin, null)
+    }
+
+    open class MappingBuilder<Fr : Any, To> {
+        internal val map: MutableMap<String, IMappingBuilderItem<Fr>> = mutableMapOf()
+        /** "from" class instance - dummy class for shorter access to field. DO NOT use it as object, only as reference to field */
+        val f: Fr = dummy()
+        /** "to" class instance - dummy class for shorter access to field. DO NOT use it as object, only as reference to field */
+        val t: To = dummy()
 
         // e.g.
-        //  To::address from From::address
+        //  Target::address from Source::address
         infix fun <V1, V2> KProperty1<To, V1>.from(sourceRef: KProperty1<Fr, V2>) {
-            map[this.name] = ManualMapping(sourceRef::get, sourceRef.returnType)
+            map[this.name] = PropMapping(sourceRef.name)
+        }
+
+        infix fun <V1, V2> KProperty1<To, V1>.from(sourceRef: KProperty0<V2>?) {
+            val frName = sourceRef?.name ?: throw IllegalStateException("mapper source param is null")
+            map[this.name] = PropMapping(frName)
+        }
+
+        // t::address from f::address
+        infix fun <V1, V2> KProperty0<V1>?.from(sourceRef: KProperty0<V2>?) {
+            val frName = sourceRef?.name ?: throw IllegalStateException("mapper source param is null")
+            val toName = this?.name ?: throw IllegalStateException("mapper target param is null")
+            map[toName] = PropMapping(frName)
         }
 
         // e.g.
         //  To::address from { it.address + ", Vilnius" }
-        @OptIn(ExperimentalReflectionOnLambdas::class)
         infix fun <V> KProperty1<To, V>.from(sourceFn: (Fr) -> V) {
-            val returnType = try {
-                val tp = sourceFn.reflect()?.returnType
+            val returnType = getReturnTypeOfLambda(sourceFn)
+            map[this.name] = LambdaMapping(sourceFn, returnType)
+        }
+
+        infix fun <V> KProperty0<V>.from(sourceFn: (Fr) -> V) {
+            val returnType = getReturnTypeOfLambda(sourceFn)
+            map[this.name] = LambdaMapping(sourceFn, returnType)
+        }
+
+        // e.g.
+        //  From::address mapTo To::address
+        infix fun <V1, V2> KProperty1<Fr, V1>.mapTo(targetRef: KProperty1<To, V2>) {
+            map[targetRef.name] = LambdaMapping(this::get, this.returnType)
+        }
+
+        infix fun <V1, V2> KProperty1<Fr, V1>.mapTo(targetRef: KProperty0<V2>) {
+            map[targetRef.name] = LambdaMapping(this::get, this.returnType)
+        }
+
+        infix fun <V1, V2> KProperty0<V1>.mapTo(targetRef: KProperty0<V2>) {
+            map[targetRef.name] = PropMapping(this.name)
+        }
+
+        infix fun <V1, V2> KProperty0<V1>.mapTo(targetRef: KProperty1<To, V2>) {
+            map[targetRef.name] = PropMapping(this.name)
+        }
+
+        @OptIn(ExperimentalReflectionOnLambdas::class)
+        private fun <V> getReturnTypeOfLambda(fn: (Fr) -> V): KType? {
+            return try {
+                val tp = fn.reflect()?.returnType
                 if (tp == null || tp.classifier == Any::class) {
                     null
                 } else {
@@ -163,13 +232,17 @@ class LaMapper(
             } catch (e: Error) {
                 null
             }
-            map[this.name] = ManualMapping(sourceFn, returnType)
         }
 
-        // e.g.
-        //  From::address mapTo To::address
-        infix fun <V1, V2> KProperty1<Fr, V1>.mapTo(targetRef: KProperty1<To, V2>) {
-            map[targetRef.name] = ManualMapping(this::get, this.returnType)
+        private fun <T> dummy(): T {
+            val o = null as T?
+            asNn(o)
+            return o
+        }
+
+        @OptIn(ExperimentalContracts::class)
+        private fun <T> asNn(value: T?) {
+            contract { returns() implies (value != null) }
         }
     }
 }

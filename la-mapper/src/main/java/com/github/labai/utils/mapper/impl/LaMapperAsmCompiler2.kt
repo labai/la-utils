@@ -78,7 +78,7 @@ internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) 
             val compiledParamBind = struct.paramBinds.map { orig ->
                 ParamBind(
                     param = orig.param,
-                    manualMapping = orig.manualMapping,
+                    lambdaMapping = orig.lambdaMapping,
                     sourcePropRd = if (orig in readableParams) multiReaderMainCon.SinglePropReader(orig.sourcePropRd!!, pos++) else orig.sourcePropRd,
                     convFn = orig.convFn,
                     dataConverters = orig.dataConverters,
@@ -135,7 +135,7 @@ internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) 
             compiledPropManualBinds = struct.propManualBinds.mapIndexed { pos, orig ->
                 PropManualBind(
                     targetPropWr = multiWriterMainMan.SinglePropWriter(orig.targetPropWr, pos),
-                    manualMapping = orig.manualMapping,
+                    lambdaMapping = orig.lambdaMapping,
                 )
             }.toTypedArray()
         } else {
@@ -166,8 +166,8 @@ internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) 
                 size = compiledPropManualBinds.size
                 while (++i < size) {
                     val mapr = compiledPropManualBinds[i]
-                    val valTo = mapr.manualMapping.mapper.invoke(from)
-                    val valConv = mapr.manualMapping.convNnFn.convertValNn(valTo)
+                    val valTo = mapr.lambdaMapping.mapper.invoke(from)
+                    val valConv = mapr.lambdaMapping.convNnFn.convertValNn(valTo)
                     mapr.targetPropWr.setValue(target, valConv)
                 }
                 multiWriterMainMan?.writeValues(target)

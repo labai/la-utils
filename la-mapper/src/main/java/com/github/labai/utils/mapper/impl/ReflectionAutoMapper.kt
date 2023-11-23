@@ -69,8 +69,8 @@ internal class ReflectionAutoMapper<Fr : Any, To : Any>(
         size = struct.propManualBinds.size
         while (++i < size) {
             val mapr = struct.propManualBinds[i]
-            val valTo = mapr.manualMapping.mapper.invoke(from)
-            val valConv = mapr.manualMapping.convNnFn.convertValNn(valTo)
+            val valTo = mapr.lambdaMapping.mapper.invoke(from)
+            val valConv = mapr.lambdaMapping.convNnFn.convertValNn(valTo)
             mapr.targetPropWr.setValue(target, valConv)
         }
         return target
@@ -107,7 +107,7 @@ internal open class ObjectCreator<Fr : Any, To : Any>(
 
     open fun createObject(from: Fr): To {
         val target: To = if (targetConstructor == null) {
-            targetType.createInstance()
+                targetType.createInstance()
         } else if (allArgsNullsTemplate != null) {
             // args as array are slightly faster
             val paramArr = if (allArgsNullsTemplate.isNotEmpty()) allArgsNullsTemplate.clone() else EMPTY_ARRAY

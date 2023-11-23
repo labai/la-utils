@@ -270,6 +270,59 @@ class LaMapperTest {
         assertEquals("a", res.a01)
     }
 
+    class Dto11(
+        var v01: Long = 1L,
+        var v02: Long = 2L,
+        var v03: Int = 3,
+        var v04: Int = 4,
+        var v05: Long = 5L,
+        var v06: Long = 6L,
+    )
+
+    @ParameterizedTest
+    @MethodSource(MappersConfig.ENGINES)
+    fun test11_mapWithPseudoObjectHelper_from(engine: String) {
+        val mapper = MappersConfig.getMapper<Dto11, Dto11>(engine) {
+            t::v01 from Dto11::v04
+            Dto11::v02 from f::v03
+            t::v03 from f::v02
+            Dto11::v04 from Dto11::v01
+            t::v05 from { 105 }
+            Dto11::v06 from { 106 }
+        }
+
+        val from = Dto11()
+
+        val res = mapper.transform(from)
+
+        assertEquals(4, res.v01)
+        assertEquals(3, res.v02)
+        assertEquals(2, res.v03)
+        assertEquals(1, res.v04)
+        assertEquals(105, res.v05)
+        assertEquals(106, res.v06)
+    }
+
+    @ParameterizedTest
+    @MethodSource(MappersConfig.ENGINES)
+    fun test11_mapWithPseudoObjectHelper_mapTo(engine: String) {
+        val mapper = MappersConfig.getMapper<Dto11, Dto11>(engine) {
+            Dto11::v04 mapTo t::v01
+            f::v03 mapTo Dto11::v02
+            f::v02 mapTo t::v03
+            Dto11::v01 mapTo Dto11::v04
+        }
+
+        val from = Dto11()
+
+        val res = mapper.transform(from)
+
+        assertEquals(4, res.v01)
+        assertEquals(3, res.v02)
+        assertEquals(2, res.v03)
+        assertEquals(1, res.v04)
+    }
+
     private fun assertEqBigDecimal(expectedAsStr: String, value: BigDecimal) {
         assertTrue(value.compareTo(BigDecimal(expectedAsStr)) == 0, "Expected '$expectedAsStr', got '$value'")
     }

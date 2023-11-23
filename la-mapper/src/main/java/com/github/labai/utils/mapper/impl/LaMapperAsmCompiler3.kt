@@ -70,7 +70,7 @@ internal class LaMapperAsmCompiler3(private val serviceContext: ServiceContext) 
                 } else if (prm.sourcePropRd != null) {
                     PojoArgDef.forProp((prm.param.type.classifier as KClass<*>).java, prm.sourcePropRd.toNameOrAccessor(), prm.convFn)
                 } else {
-                    PojoArgDef.forSupplier((prm.param.type.classifier as KClass<*>).java, prm.manualMapping!!.mapper as ((Any) -> Any)?, prm.convFn)
+                    PojoArgDef.forSupplier((prm.param.type.classifier as KClass<*>).java, prm.lambdaMapping!!.mapper as ((Any) -> Any)?, prm.convFn)
                 }
             }.toMutableList()
             // add addition params for kotlin synthetic constructor
@@ -95,7 +95,7 @@ internal class LaMapperAsmCompiler3(private val serviceContext: ServiceContext) 
         }
 
         val propDefsMan = struct.propManualBinds.map {
-            PojoCopyPropDef.forManual(it.manualMapping.mapper, it.targetPropWr.toNameOrAccessor(), it.manualMapping.convNnFn)
+            PojoCopyPropDef.forManual(it.lambdaMapping.mapper, it.targetPropWr.toNameOrAccessor(), it.lambdaMapping.convNnFn)
         }
 
         val copier = LaHardCopy.createPojoCopierClass<Fr, To>(
