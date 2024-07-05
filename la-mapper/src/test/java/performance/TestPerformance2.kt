@@ -26,7 +26,8 @@ class TestPerformance2 {
     fun test_performance_mixed() {
         val defaultMapper = getMapper(LaMapper.global)
         val reflectionMapper = getMapper(reflectionLaMapper)
-        val partialCompiledMapper: AutoMapper<From, To> = partialCompiledFactory.autoMapper()
+        val partialCompiledMapper: AutoMapper<From, To> = getMapper(partialCompiledFactory)
+
         PerfHelper.testForClasses(
             createFromFn = { createFrom(it) },
             createToFn = { fr -> To(fr.aaa.toInt(), fr.fld2, fr.fld3, fr.fld4) },

@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * @author Augustus
  *         created on 2023.11.22
  */
-public class LaMapperJTest {
+class LaMapperJTest {
 
     public static class Dto1 {
         public String f01;

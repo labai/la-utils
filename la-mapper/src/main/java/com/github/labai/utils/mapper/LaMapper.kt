@@ -167,8 +167,10 @@ class LaMapper(
 
     open class MappingBuilder<Fr : Any, To> {
         internal val map: MutableMap<String, IMappingBuilderItem<Fr>> = mutableMapOf()
+
         /** "from" class instance - dummy class for shorter access to field. DO NOT use it as object, only as reference to field */
         val f: Fr = dummy()
+
         /** "to" class instance - dummy class for shorter access to field. DO NOT use it as object, only as reference to field */
         val t: To = dummy()
 

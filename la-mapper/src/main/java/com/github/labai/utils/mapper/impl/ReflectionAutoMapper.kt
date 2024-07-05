@@ -107,7 +107,7 @@ internal open class ObjectCreator<Fr : Any, To : Any>(
 
     open fun createObject(from: Fr): To {
         val target: To = if (targetConstructor == null) {
-                targetType.createInstance()
+            targetType.createInstance()
         } else if (allArgsNullsTemplate != null) {
             // args as array are slightly faster
             val paramArr = if (allArgsNullsTemplate.isNotEmpty()) allArgsNullsTemplate.clone() else EMPTY_ARRAY

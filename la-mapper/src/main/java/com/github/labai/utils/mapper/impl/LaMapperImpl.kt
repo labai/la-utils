@@ -75,16 +75,21 @@ internal class LaMapperImpl(
         private var counter: Int = 0
 
         internal fun init() {
-            if (isInitialized.compareAndSet(false, true)) {
-                struct = MappedStruct(
-                    sourceType,
-                    targetType,
-                    manualMappings.filter { it.value is PropMapping }.mapValues { it.value as PropMapping },
-                    manualMappings.filter { it.value is LambdaMapping }.mapValues { it.value as LambdaMapping },
-                    serviceContext
-                )
-                activeMapper = ReflectionAutoMapper(struct, serviceContext)
-                manualMappings = mapOf() // cleanup
+            if (!isInitialized.get()) {
+                synchronized(this) {
+                    if (!isInitialized.get()) {
+                        struct = MappedStruct(
+                            sourceType,
+                            targetType,
+                            manualMappings.filter { it.value is PropMapping }.mapValues { it.value as PropMapping },
+                            manualMappings.filter { it.value is LambdaMapping }.mapValues { it.value as LambdaMapping },
+                            serviceContext,
+                        )
+                        activeMapper = ReflectionAutoMapper(struct, serviceContext)
+                        manualMappings = mapOf() // cleanup
+                    }
+                }
+                isInitialized.set(true)
             }
 
             if (needToCompile && ++counter > config.startCompileAfterIterations) {
@@ -124,7 +129,7 @@ internal class LaMapperImpl(
 
     internal class LambdaMapping<Fr>(
         val mapper: ManualFn<Fr>,
-        val sourceType: KType? // type of lambda return
+        val sourceType: KType?, // type of lambda return
     ) : IMappingBuilderItem<Fr> {
         internal var convNnFn: ConvFn? = null
         internal var targetType: KType? = null
@@ -134,7 +139,6 @@ internal class LaMapperImpl(
         val frName: String,
     ) : IMappingBuilderItem<Fr>
 }
-
 
 internal class ClassTrioMap<T> {
     private val map: MutableMap<ClassTrio, Pair<ClassTrio, T>> = ConcurrentHashMap()

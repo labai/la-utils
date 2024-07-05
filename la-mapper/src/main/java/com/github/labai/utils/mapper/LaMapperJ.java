@@ -35,8 +35,12 @@ package com.github.labai.utils.mapper;
  *  - LaConverterRegistry.registerGlobalExtResolver()
  *
  */
-public class LaMapperJ {
+public final class LaMapperJ {
 
+    private LaMapperJ() {
+    }
+
+    @SuppressWarnings("unchecked")
     public static <Fr, To> To copyFrom(Fr fr, Class<To> targetClass) {
         if (fr == null)
             return null;

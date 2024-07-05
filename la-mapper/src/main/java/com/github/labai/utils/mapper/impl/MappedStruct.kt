@@ -359,7 +359,7 @@ internal object PropAccessUtils {
         } else if (this is PropertyReaderGetter) {
             NameOrAccessor.accessor(this.getter.javaMethod)
         } else {
-            throw IllegalStateException("Invalid PropertyReader")
+            error("Invalid PropertyReader")
         }
     }
 
@@ -369,7 +369,7 @@ internal object PropAccessUtils {
         } else if (this is PropertyWriterSetter) {
             NameOrAccessor.accessor(this.setter.javaMethod)
         } else {
-            throw IllegalStateException("Invalid PropertyWriter")
+            error("Invalid PropertyWriter")
         }
     }
 }
