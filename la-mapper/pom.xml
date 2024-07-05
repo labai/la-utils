@@ -3,7 +3,7 @@
 
     <groupId>com.github.labai.utils</groupId>
     <artifactId>la-mapper</artifactId>
-    <version>0.2.2-SNAPSHOT</version>
+    <version>0.2.3-SNAPSHOT</version>
     <name>Mapper</name>
     <packaging>jar</packaging>
     <description>Data mapper for kotlin</description>
@@ -93,7 +93,7 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.2.11</version>
+            <version>1.5.6</version>
             <scope>test</scope>
         </dependency>
 
@@ -128,7 +128,7 @@
                 <executions>
                     <execution>
                         <id>compile</id>
-                        <phase>compile</phase>
+                        <phase>process-sources</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>
@@ -181,7 +181,7 @@
             <plugin>
                 <groupId>org.sonatype.plugins</groupId>
                 <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.3</version>
+                <version>1.6.14</version>
                 <extensions>true</extensions>
                 <configuration>
                     <serverId>ossrh</serverId>
