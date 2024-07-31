@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory
 import java.lang.IllegalStateException
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
+import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty0
 import kotlin.reflect.KProperty1
@@ -174,51 +175,90 @@ class LaMapper(
         /** "to" class instance - dummy class for shorter access to field. DO NOT use it as object, only as reference to field */
         val t: To = dummy()
 
-        // e.g.
+        // ------- <t> from <f> combinations ------------------
+
         //  Target::address from Source::address
         infix fun <V1, V2> KProperty1<To, V1>.from(sourceRef: KProperty1<Fr, V2>) {
             map[this.name] = PropMapping(sourceRef.name)
         }
 
-        infix fun <V1, V2> KProperty1<To, V1>.from(sourceRef: KProperty0<V2>?) {
+        //  Target::address from f::address
+        infix fun <V1, V2> KProperty1<To, V1>.from(sourceRef: KCallable<V2>?) {
             val frName = sourceRef?.name ?: throw IllegalStateException("mapper source param is null")
             map[this.name] = PropMapping(frName)
         }
 
+        //  t::address from Source::address
+        infix fun <V1, V2> KProperty0<V1>.from(sourceRef: KProperty1<Fr, V2>) {
+            map[this.name] = PropMapping(sourceRef.name)
+        }
+
         // t::address from f::address
-        infix fun <V1, V2> KProperty0<V1>?.from(sourceRef: KProperty0<V2>?) {
+        infix fun <V1, V2> KProperty0<V1>?.from(sourceRef: KCallable<V2>?) {
             val frName = sourceRef?.name ?: throw IllegalStateException("mapper source param is null")
             val toName = this?.name ?: throw IllegalStateException("mapper target param is null")
             map[toName] = PropMapping(frName)
         }
 
-        // e.g.
+        //  t::address from Source::address (works for records)
+        infix fun <V1, V2> KCallable<V1>.from(sourceRef: KProperty1<Fr, V2>) {
+            map[this.name] = PropMapping(sourceRef.name)
+        }
+
+        // t::address from f::address (works for records)
+        infix fun <V1, V2> KCallable<V1>?.from(sourceRef: KCallable<V2>?) {
+            val frName = sourceRef?.name ?: throw IllegalStateException("mapper source param is null")
+            val toName = this?.name ?: throw IllegalStateException("mapper target param is null")
+            map[toName] = PropMapping(frName)
+        }
+
         //  To::address from { it.address + ", Vilnius" }
         infix fun <V> KProperty1<To, V>.from(sourceFn: (Fr) -> V) {
             val returnType = getReturnTypeOfLambda(sourceFn)
             map[this.name] = LambdaMapping(sourceFn, returnType)
         }
 
+        //  t::address from { it.address + ", Vilnius" }
         infix fun <V> KProperty0<V>.from(sourceFn: (Fr) -> V) {
             val returnType = getReturnTypeOfLambda(sourceFn)
             map[this.name] = LambdaMapping(sourceFn, returnType)
         }
 
-        // e.g.
+        //  t::address from { it.address + ", Vilnius" } (works for records)
+        infix fun <V> KCallable<V>.from(sourceFn: (Fr) -> V) {
+            val returnType = getReturnTypeOfLambda(sourceFn)
+            map[this.name] = LambdaMapping(sourceFn, returnType)
+        }
+
+        // ------- <f> mapTo <t> combinations -----------------
+
         //  From::address mapTo To::address
         infix fun <V1, V2> KProperty1<Fr, V1>.mapTo(targetRef: KProperty1<To, V2>) {
             map[targetRef.name] = LambdaMapping(this::get, this.returnType)
         }
 
-        infix fun <V1, V2> KProperty1<Fr, V1>.mapTo(targetRef: KProperty0<V2>) {
+        //  From::address mapTo t::address
+        infix fun <V1, V2> KProperty1<Fr, V1>.mapTo(targetRef: KCallable<V2>) {
             map[targetRef.name] = LambdaMapping(this::get, this.returnType)
         }
 
-        infix fun <V1, V2> KProperty0<V1>.mapTo(targetRef: KProperty0<V2>) {
+        //  f::address mapTo To::address
+        infix fun <V1, V2> KProperty0<V1>.mapTo(targetRef: KProperty1<To, V2>) {
             map[targetRef.name] = PropMapping(this.name)
         }
 
-        infix fun <V1, V2> KProperty0<V1>.mapTo(targetRef: KProperty1<To, V2>) {
+        //  f::address mapTo t::address
+        infix fun <V1, V2> KProperty0<V1>.mapTo(targetRef: KCallable<V2>) {
+            map[targetRef.name] = PropMapping(this.name)
+        }
+
+        //  f::address mapTo t::address (works for records)
+        infix fun <V1, V2> KCallable<V1>.mapTo(targetRef: KCallable<V2>) {
+            map[targetRef.name] = PropMapping(this.name)
+        }
+
+        //  f::address mapTo To::address (works for records)
+        infix fun <V1, V2> KCallable<V1>.mapTo(targetRef: KProperty1<To, V2>) {
             map[targetRef.name] = PropMapping(this.name)
         }
 

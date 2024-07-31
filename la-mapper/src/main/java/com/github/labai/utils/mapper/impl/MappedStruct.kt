@@ -56,7 +56,7 @@ internal class MappedStruct<Fr : Any, To : Any>(
     private val manualMappers: Map<String, LambdaMapping<Fr>>,
     serviceContext: ServiceContext,
 ) {
-    internal val targetConstructor: KFunction<To>? = targetType.primaryConstructor
+    internal val targetConstructor: KFunction<To>?
     internal val paramBinds: Array<ParamBind<Fr>>
     internal val propAutoBinds: Array<PropAutoBind<Fr, To>>
     internal val propManualBinds: Array<PropManualBind<Fr, To>>
@@ -66,6 +66,13 @@ internal class MappedStruct<Fr : Any, To : Any>(
     private val config: LaMapperConfig = serviceContext.config
 
     init {
+
+        targetConstructor = if (targetType.java.isRecord) {
+            RecordKConstructor.forRecordOrNull(targetType.java)
+            // primaryConstructor may cause an exception with record and primitives (KT-58649)
+        } else {
+            targetType.primaryConstructor
+        }
 
         val sourcePropsByName: Map<String, PropertyReader<Fr>> = getSourceMemberProps(sourceType)
             .associateBy { it.name }
@@ -314,7 +321,8 @@ internal object PropAccessUtils {
         if (fieldName.isEmpty())
             return null
         val fnName = "get" + fieldName[0].uppercaseChar() + fieldName.substring(1)
-        return sourceClass.declaredFunctions.find { f -> f.name == fnName && f.returnType == type }
+        return sourceClass.declaredFunctions.find { f -> f.name == fnName && f.returnType == type } // getField()
+            ?: sourceClass.declaredFunctions.find { f -> f.name == fieldName && f.returnType == type } // also field()
     }
 
     internal fun getSetterByName(sourceClass: KClass<*>, fieldName: String, type: KType): KFunction<*>? {

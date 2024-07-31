@@ -57,7 +57,7 @@ Just add maven dependency
 <dependency>
     <groupId>com.github.labai.utils</groupId>
     <artifactId>la-mapper</artifactId>
-    <version>0.2.1</version>
+    <version>0.2.2</version>
 </dependency>
 ```
 and use it.
@@ -118,8 +118,8 @@ fun HighlyRespectedPerson.toPersonDto(): PersonApiResponseDto = LaMapper.copyFro
 }
 ```
 Special pseudo-variables are used here:
-- `t` - for accessing target ("to) class fields
+- `t` - for accessing target ("to") class fields
 - `f` - for accessing source ("from") class fields
 
-Btw, they are created for field references only and can't be used directly as object, 
+NB: they are created for field references only and can't be used directly as object, 
 i.e. trying to write `t.code = f.personCode` would cause an error. 

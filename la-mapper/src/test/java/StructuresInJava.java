@@ -53,4 +53,13 @@ public class StructuresInJava {
         public String getProp1() { return prop1; }
     }
 
+    public record Record12(
+        Long v01,
+        long v02,
+        Integer v03,
+        int v04,
+        String v06
+    ) {
+    }
+
 }

@@ -1,6 +1,8 @@
+import StructuresInJava.Record12
 import StructuresInJava.Test1Pojo
 import StructuresInJava.Test2PojoConstr
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.fail
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
@@ -97,5 +99,86 @@ class LaMapperJavaTest {
             else
                 fail { "Invalid exception type: $e ${e.message}" }
         }
+    }
+
+    class Dto12(
+        var v01: Long = 1L,
+        var v02: Long? = 2L,
+        var v03: Int = 3,
+        var v04: Int? = 4,
+        var v05: String? = "5",
+    )
+
+    @ParameterizedTest
+    @MethodSource(MappersConfig.ENGINES)
+    fun test12_dto_to_record(engine: String) {
+        val mapper = MappersConfig.getMapper<Dto12, Record12>(engine) {
+            Dto12::v01 mapTo t::v04
+            f::v02 mapTo t::v03
+            f::v03 mapTo t::v02
+            Record12::v04 mapTo Dto12::v01
+            t::v06 from { "x" }
+        }
+
+        val from = Dto12()
+
+        val res = mapper.transform(from)
+
+        assertEquals(4, res.v01)
+        assertEquals(3, res.v02)
+        assertEquals(2, res.v03)
+        assertEquals(1, res.v04)
+        assertEquals("x", res.v06)
+    }
+
+    @ParameterizedTest
+    @MethodSource(MappersConfig.ENGINES)
+    fun test12_dto_to_record_missing_arg(engine: String) {
+        val mapperMissingV6 = MappersConfig.getMapper<Dto12, Record12>(engine) //
+        assertThrows<IllegalArgumentException> {
+            mapperMissingV6.transform(Dto12())
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource(MappersConfig.ENGINES)
+    fun test12_record_to_dto(engine: String) {
+        val mapper = MappersConfig.getMapper<Record12, Dto12>(engine) {
+            Dto12::v01 from f::v04
+            t::v02 from f::v03
+            t::v03 from f::v02
+            Dto12::v04 from f::v01
+        }
+
+        val from = Record12(1, 2, 3, 4, "6")
+
+        val res = mapper.transform(from)
+
+        assertEquals(4, res.v01)
+        assertEquals(3, res.v02)
+        assertEquals(2, res.v03)
+        assertEquals(1, res.v04)
+        assertEquals("5", res.v05) // leave default value
+    }
+
+    @ParameterizedTest
+    @MethodSource(MappersConfig.ENGINES)
+    fun test12_record_to_record(engine: String) {
+        val mapper = MappersConfig.getMapper<Record12, Record12>(engine) {
+            Record12::v01 from f::v04
+            t::v02 from f::v03
+            t::v03 from f::v02
+            Record12::v04 from f::v01
+        }
+
+        val from = Record12(1, 2, 3, 4, "6")
+
+        val res = mapper.transform(from)
+
+        assertEquals(4, res.v01)
+        assertEquals(3, res.v02)
+        assertEquals(2, res.v03)
+        assertEquals(1, res.v04)
+        assertEquals("6", res.v06)
     }
 }

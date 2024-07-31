@@ -95,24 +95,27 @@ internal class LaMapperImpl(
             if (needToCompile && ++counter > config.startCompileAfterIterations) {
                 synchronized(this) {
                     if (needToCompile) {
-                        val hasValueClass = struct.paramBinds.firstOrNull { (it.param.type.classifier as KClass<*>).isValue }
-                            ?: struct.paramBinds.firstOrNull { it.sourcePropRd?.klass?.isValue == true }
-                            ?: struct.propAutoBinds.firstOrNull { it.sourcePropRd.klass.isValue || it.targetPropWr.klass.isValue }
-                            ?: struct.propManualBinds.firstOrNull { it.targetPropWr.klass.isValue }
-                        try {
-                            activeMapper = if (hasValueClass != null || config.disableSyntheticConstructorCall || config.disableFullCompile) {
-                                LaMapper.logger.trace("Use partial compile for $sourceType to $targetType mapper")
-                                laMapperAsmCompiler2.compiledMapper(struct)
-                            } else {
-                                LaMapper.logger.trace("Use full compile for $sourceType to $targetType mapper")
-                                laMapperAsmCompiler3.compiledMapper(struct)
+                        if (struct.targetType.java.isRecord) {
+                            LaMapper.logger.trace("Target $targetType is a record, don't compile")
+                        } else {
+                            val hasValueClass = struct.paramBinds.firstOrNull { (it.param.type.classifier as KClass<*>).isValue }
+                                ?: struct.paramBinds.firstOrNull { it.sourcePropRd?.klass?.isValue == true }
+                                ?: struct.propAutoBinds.firstOrNull { it.sourcePropRd.klass.isValue || it.targetPropWr.klass.isValue }
+                                ?: struct.propManualBinds.firstOrNull { it.targetPropWr.klass.isValue }
+                            try {
+                                activeMapper = if (hasValueClass != null || config.disableSyntheticConstructorCall || config.disableFullCompile) {
+                                    LaMapper.logger.trace("Use partial compile for $sourceType to $targetType mapper")
+                                    laMapperAsmCompiler2.compiledMapper(struct)
+                                } else {
+                                    LaMapper.logger.trace("Use full compile for $sourceType to $targetType mapper")
+                                    laMapperAsmCompiler3.compiledMapper(struct)
+                                }
+                            } catch (e: Exception) {
+                                if (config.failOnOptimizationError)
+                                    throw e
+                                LaMapper.logger.debug("Failed to compile mapper $sourceType to $targetType, use reflection mode. Error: ${e.message}")
                             }
-                        } catch (e: Exception) {
-                            if (config.failOnOptimizationError)
-                                throw e
-                            LaMapper.logger.debug("Failed to compile mapper $sourceType to $targetType, use reflection mode. Error: ${e.message}")
                         }
-
                         needToCompile = false
                     }
                 }
