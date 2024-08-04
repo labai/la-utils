@@ -146,15 +146,23 @@ internal class LaMapperImpl(
 internal class ClassTrioMap<T> {
     private val map: MutableMap<ClassTrio, Pair<ClassTrio, T>> = ConcurrentHashMap()
 
-    private data class ClassTrio(val source: KClass<*>, val target: KClass<*>, val mapper: KClass<*>?)
+    private data class ClassTrio(val source: KClass<*>, val target: KClass<*>, val mapper: Any?)
     private var last: Pair<ClassTrio, T>? = null
 
     fun <Fr : Any, To : Any> getOrPut(sourceType: KClass<Fr>, targetType: KClass<To>, mapperClass: KClass<*>?, itemFn: Supplier<T>): T {
+        return getOrPutImpl(sourceType, targetType, mapperClass, itemFn)
+    }
+
+    fun <Fr : Any, To : Any> getOrPut(sourceType: KClass<Fr>, targetType: KClass<To>, mapperRef: List<*>, itemFn: Supplier<T>): T {
+        return getOrPutImpl(sourceType, targetType, mapperRef, itemFn)
+    }
+
+    private fun <Fr : Any, To : Any> getOrPutImpl(sourceType: KClass<Fr>, targetType: KClass<To>, mapperRef: Any?, itemFn: Supplier<T>): T {
         val last = last
-        if (last != null && last.first.source === sourceType && last.first.target === targetType && last.first.mapper === mapperClass) {
+        if (last != null && last.first.source === sourceType && last.first.target === targetType && last.first.mapper === mapperRef) {
             return last.second
         }
-        val key = ClassTrio(sourceType, targetType, mapperClass)
+        val key = ClassTrio(sourceType, targetType, mapperRef)
         val value = map[key]
         if (value != null) {
             this.last = value

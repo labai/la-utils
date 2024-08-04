@@ -1,6 +1,6 @@
-import StructuresInJava.Record12
-import StructuresInJava.Test1Pojo
-import StructuresInJava.Test2PojoConstr
+import jtest.StructuresInJava.Record12
+import jtest.StructuresInJava.Test1Pojo
+import jtest.StructuresInJava.Test2PojoConstr
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.fail

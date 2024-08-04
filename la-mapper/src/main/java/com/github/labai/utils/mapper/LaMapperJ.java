@@ -23,6 +23,11 @@ SOFTWARE.
 */
 package com.github.labai.utils.mapper;
 
+import kotlin.Pair;
+
+import java.util.List;
+import java.util.function.Function;
+
 /**
  * @author Augustus
  * created on 2023.05.10
@@ -44,11 +49,25 @@ public final class LaMapperJ {
     public static <Fr, To> To copyFrom(Fr fr, Class<To> targetClass) {
         if (fr == null)
             return null;
-        return LaMapper.Companion.getGlobal().copyFromJ(fr, (Class<Fr>) fr.getClass(), targetClass);
+        return LaMapper.Companion.getGlobal().copyFromJ(fr, (Class<Fr>) fr.getClass(), targetClass, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <Fr, To> To copyFrom(Fr fr, Class<To> targetClass, List<Pair<String, Function<Fr, ?>>> fieldMappers) {
+        if (fr == null)
+            return null;
+        return LaMapper.Companion.getGlobal().copyFromJ(fr, (Class<Fr>) fr.getClass(), targetClass, fieldMappers);
     }
 
     public static <Fr, To> AutoMapper<Fr, To> autoMapper(Class<Fr> sourceClass, Class<To> targetClass) {
-        return LaMapper.Companion.getGlobal().autoMapperJ(sourceClass, targetClass);
+        return LaMapper.Companion.getGlobal().autoMapperJ(sourceClass, targetClass, null);
     }
 
+    public static <Fr, To> AutoMapper<Fr, To> autoMapper(Class<Fr> sourceClass, Class<To> targetClass, List<Pair<String, Function<Fr, ?>>> fieldMappers) {
+        return LaMapper.Companion.getGlobal().autoMapperJ(sourceClass, targetClass, fieldMappers);
+    }
+
+    public static <Fr> Pair<String, Function<Fr, ?>> mapFrom(String t, Function<Fr, ?> f) {
+        return new Pair<>(t, f);
+    }
 }

@@ -1,3 +1,5 @@
+package jtest;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -6,7 +8,6 @@ import org.jetbrains.annotations.Nullable;
  * created on 2022.11.21
  */
 public class StructuresInJava {
-
 
     public static class Test1Pojo {
         public String field1;
@@ -43,7 +44,7 @@ public class StructuresInJava {
         public void assignField2(String value) { field2 = value; }
     }
 
-    static class Test2PojoConstr {
+    public static class Test2PojoConstr {
         private final String prop1;
 
         public Test2PojoConstr(String prop1) {

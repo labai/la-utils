@@ -32,6 +32,7 @@ import com.github.labai.utils.mapper.impl.LaMapperImpl.LambdaMapping
 import com.github.labai.utils.mapper.impl.LaMapperImpl.PropMapping
 import org.slf4j.LoggerFactory
 import java.lang.IllegalStateException
+import java.util.function.Function as JavaFunction
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 import kotlin.reflect.KCallable
@@ -153,17 +154,43 @@ class LaMapper(
         from: Fr,
         sourceType: Class<Fr>,
         targetType: Class<To>,
+        fieldMappers: List<Pair<String, Any>>?,
     ): To {
+        val map = getMapFromJavaPairList<Fr>(fieldMappers)
+
         @Suppress("UNCHECKED_CAST")
-        val mapper = cache.getOrPut(sourceType.kotlin, targetType.kotlin, null) {
-            autoMapper(sourceType.kotlin, targetType.kotlin, null)
+        val mapper = cache.getOrPut(sourceType.kotlin, targetType.kotlin, fieldMappers ?: listOf<Pair<String, Any>>()) {
+            laMapperImpl.AutoMapperImpl(sourceType.kotlin, targetType.kotlin, map)
         } as AutoMapper<Fr, To>
+
         return mapper.transform(from)
     }
 
     @JvmName("autoMapperJ")
-    internal fun <Fr : Any, To : Any> autoMapperJ(sourceType: Class<Fr>, targetType: Class<To>): AutoMapper<Fr, To> {
-        return autoMapper(sourceType.kotlin, targetType.kotlin, null)
+    internal fun <Fr : Any, To : Any> autoMapperJ(
+        sourceType: Class<Fr>,
+        targetType: Class<To>,
+        fieldMappers: List<Pair<String, Any>>?,
+    ): AutoMapper<Fr, To> {
+        val map = getMapFromJavaPairList<Fr>(fieldMappers)
+        return laMapperImpl.AutoMapperImpl(sourceType.kotlin, targetType.kotlin, map)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun <Fr : Any> getMapFromJavaPairList(fieldMappers: List<Pair<String, Any>>?): Map<String, IMappingBuilderItem<Fr>> {
+        if (fieldMappers.isNullOrEmpty())
+            return mapOf()
+
+        val map: MutableMap<String, IMappingBuilderItem<Fr>> = mutableMapOf()
+        for ((to, from) in fieldMappers) {
+            if (from is JavaFunction<*, *>) {
+                val fn = from as JavaFunction<Fr, *>
+                map[to] = LambdaMapping({ fn.apply(it) }, null)
+            } else {
+                error("Invalid 'from' type (${from.javaClass.name}) for target field '$to'")
+            }
+        }
+        return map
     }
 
     open class MappingBuilder<Fr : Any, To> {
