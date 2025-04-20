@@ -1,5 +1,10 @@
 Version history
 
+0.2.3 (2025-04)
+- fix closures
+- add records
+- add java helper
+
 0.2.2 (2024-07)
 - fix parallel initialization issue
 - add 'f' and 't' pseudo variables

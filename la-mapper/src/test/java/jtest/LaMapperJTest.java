@@ -1,9 +1,16 @@
 package jtest;
 
+import com.github.labai.utils.mapper.LaMapper;
 import com.github.labai.utils.mapper.LaMapperJ;
 import jtest.StructuresInJava.Record12;
 import jtest.StructuresInJava.Test1Pojo;
+import kotlin.Pair;
 import org.junit.jupiter.api.Test;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 import static com.github.labai.utils.mapper.LaMapperJ.mapFrom;
 import static java.util.Arrays.asList;
@@ -90,6 +97,25 @@ class LaMapperJTest {
         assertEquals(expected, res);
     }
 
+    @Test
+    void test3_copyFromMap() {
+        var map = Map.<String, Object>of(
+            "v01", 1,
+            "v02", 2,
+            "v03", 3L,
+            "v04", 4L,
+            "v06", "a");
+
+        var map2 = new HashMap<>(map);
+        map2.put("v04", null);
+
+        var expected = new Record12(1L, 2, 3, 0, "a");
+
+        var res = copyFromMap(map2, Record12.class);
+
+        assertEquals(expected, res);
+    }
+
     private Test1Pojo getMock() {
         var o = new Test1Pojo();
         o.field1 = "f1";
@@ -101,5 +127,14 @@ class LaMapperJTest {
         o.setWrong1("1");
         o.setWrong2(2);
         return o;
+    }
+
+    static <To> To copyFromMap(Map<String, Object> fr, Class<To> targetClass) {
+        if (fr == null)
+            return null;
+        List<Pair<String, Function<Object, Object>>> fieldMappers = fr.entrySet().stream()
+            .map(e -> new Pair<String, Function<Object, Object>>(e.getKey(), f -> e.getValue()))
+            .toList();
+        return LaMapper.Companion.getGlobal().copyFromJ(fr, Object.class, targetClass, fieldMappers);
     }
 }

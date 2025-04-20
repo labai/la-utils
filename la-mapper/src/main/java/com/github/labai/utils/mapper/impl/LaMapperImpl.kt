@@ -84,6 +84,7 @@ internal class LaMapperImpl(
                             manualMappings.filter { it.value is PropMapping }.mapValues { it.value as PropMapping },
                             manualMappings.filter { it.value is LambdaMapping }.mapValues { it.value as LambdaMapping },
                             serviceContext,
+                            manualMappings.any { it.value is LambdaMapping && (it.value as LambdaMapping<Fr>).isClosure }
                         )
                         activeMapper = ReflectionAutoMapper(struct, serviceContext)
                         manualMappings = mapOf() // cleanup
@@ -126,6 +127,11 @@ internal class LaMapperImpl(
             init()
             return activeMapper.transform(from)
         }
+
+        internal fun hasClosure(): Boolean {
+            init()
+            return struct.hasClosure
+        }
     }
 
     internal interface IMappingBuilderItem<Fr>
@@ -133,9 +139,15 @@ internal class LaMapperImpl(
     internal class LambdaMapping<Fr>(
         val mapper: ManualFn<Fr>,
         val sourceType: KType?, // type of lambda return
+        val isClosure: Boolean = false,
     ) : IMappingBuilderItem<Fr> {
         internal var convNnFn: ConvFn? = null
         internal var targetType: KType? = null
+
+        internal fun copy(newMapper: ManualFn<Fr>) = LambdaMapping(newMapper, sourceType, isClosure).apply {
+            this.convNnFn = this@LambdaMapping.convNnFn
+            this.targetType = this@LambdaMapping.targetType
+        }
     }
 
     internal class PropMapping<Fr>(

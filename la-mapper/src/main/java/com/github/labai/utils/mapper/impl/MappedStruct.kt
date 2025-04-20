@@ -28,6 +28,9 @@ import com.github.labai.utils.hardreflect.LaHardReflect.NameOrAccessor
 import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
 import com.github.labai.utils.mapper.impl.LaMapperImpl.LambdaMapping
 import com.github.labai.utils.mapper.impl.LaMapperImpl.PropMapping
+import com.github.labai.utils.mapper.impl.MappedStruct.ParamBind
+import com.github.labai.utils.mapper.impl.MappedStruct.PropAutoBind
+import com.github.labai.utils.mapper.impl.MappedStruct.PropManualBind
 import com.github.labai.utils.mapper.impl.PropAccessUtils.PropertyReader
 import com.github.labai.utils.mapper.impl.PropAccessUtils.PropertyWriter
 import kotlin.reflect.KClass
@@ -49,17 +52,27 @@ import kotlin.reflect.jvm.javaMethod
  *
  * for internal usage.
  */
+internal interface IMappedStruct<Fr : Any, To : Any>{
+    val sourceType: KClass<Fr>
+    val targetType: KClass<To>
+    val targetConstructor: KFunction<To>?
+    val paramBinds: Array<ParamBind<Fr>>
+    val propAutoBinds: Array<PropAutoBind<Fr, To>>
+    val propManualBinds: Array<PropManualBind<Fr, To>>
+}
+
 internal class MappedStruct<Fr : Any, To : Any>(
-    internal val sourceType: KClass<Fr>,
-    internal val targetType: KClass<To>,
+    override val sourceType: KClass<Fr>,
+    override val targetType: KClass<To>,
     private val propMappers: Map<String, PropMapping<Fr>>,
     private val manualMappers: Map<String, LambdaMapping<Fr>>,
     serviceContext: ServiceContext,
-) {
-    internal val targetConstructor: KFunction<To>?
-    internal val paramBinds: Array<ParamBind<Fr>>
-    internal val propAutoBinds: Array<PropAutoBind<Fr, To>>
-    internal val propManualBinds: Array<PropManualBind<Fr, To>>
+    internal val hasClosure: Boolean = false,
+): IMappedStruct<Fr, To> {
+    override val targetConstructor: KFunction<To>?
+    override val paramBinds: Array<ParamBind<Fr>>
+    override val propAutoBinds: Array<PropAutoBind<Fr, To>>
+    override val propManualBinds: Array<PropManualBind<Fr, To>>
     internal var areAllParams: Boolean = false
         private set
     private val dataConverters: DataConverters = serviceContext.dataConverters
@@ -132,7 +145,7 @@ internal class MappedStruct<Fr : Any, To : Any>(
             val value = if (sourcePropRd != null) {
                 sourcePropRd.getValue(from)
             } else if (lambdaMapping != null) {
-                lambdaMapping.mapper.invoke(from)
+                lambdaMapping.mapper(from)
             } else {
                 throw NullPointerException("ParamMapper must have manualMapper or sourceProp not null")
             }
@@ -141,6 +154,10 @@ internal class MappedStruct<Fr : Any, To : Any>(
             } else {
                 convFn.convertValOrNull(value)
             } ?: dataConverters.convertNull(param.type)
+        }
+
+        internal fun copy(newLambdaMapping: LambdaMapping<Fr>): ParamBind<Fr> {
+            return ParamBind(param, newLambdaMapping, sourcePropRd, convFn, dataConverters)
         }
     }
 

@@ -166,7 +166,7 @@ internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) 
                 size = compiledPropManualBinds.size
                 while (++i < size) {
                     val mapr = compiledPropManualBinds[i]
-                    val valTo = mapr.lambdaMapping.mapper.invoke(from)
+                    val valTo = mapr.lambdaMapping.mapper(from)
                     val valConv = mapr.lambdaMapping.convNnFn.convertValNn(valTo)
                     mapr.targetPropWr.setValue(target, valConv)
                 }

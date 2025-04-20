@@ -21,7 +21,7 @@ import kotlin.reflect.full.createType
  * when an exception is thrown for record with primitive in argument (KT-58649)
  *
  * records still have some limitations:
- * - no compiling if target is record
+ * - no 'compiling' if target is record
  * - use 't' and 'f' for field reference
  *
 */

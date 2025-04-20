@@ -57,7 +57,7 @@ Just add maven dependency
 <dependency>
     <groupId>com.github.labai.utils</groupId>
     <artifactId>la-mapper</artifactId>
-    <version>0.2.2</version>
+    <version>0.2.3</version>
 </dependency>
 ```
 and use it.

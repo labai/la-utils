@@ -26,7 +26,9 @@ package com.github.labai.utils.mapper
 import com.github.labai.utils.convert.IConverterResolver
 import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.impl.ClassTrioMap
+import com.github.labai.utils.mapper.impl.ClosureUtils
 import com.github.labai.utils.mapper.impl.LaMapperImpl
+import com.github.labai.utils.mapper.impl.LaMapperImpl.AutoMapperImpl
 import com.github.labai.utils.mapper.impl.LaMapperImpl.IMappingBuilderItem
 import com.github.labai.utils.mapper.impl.LaMapperImpl.LambdaMapping
 import com.github.labai.utils.mapper.impl.LaMapperImpl.PropMapping
@@ -80,6 +82,7 @@ class LaMapper(
         internal val disableSyntheticConstructorCall: Boolean = false, // disable direct kotlin synthetic constructor usage for optional parameters
         internal val disableFullCompile: Boolean = false, // disable full compile (used for tests)
         internal val failOnOptimizationError: Boolean = false, // in case of optimization failure throw an error and don't try to use reflection
+        internal val disableClosureLambdas: Boolean = false // disable closure lambdas (which access outer scope context). Mapping with closures is slower
     ) : ILaMapperConfig
 
     companion object {
@@ -128,10 +131,23 @@ class LaMapper(
         targetType: KClass<To>,
         mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
     ): To {
+        var isCached = true
         @Suppress("UNCHECKED_CAST")
         val mapper = cache.getOrPut(sourceType, targetType, if (mapping == null) null else mapping::class) {
+            isCached = false
             autoMapper(sourceType, targetType, mapping)
-        } as AutoMapper<Fr, To>
+        } as AutoMapperImpl<Fr, To>
+
+        if (isCached && mapper.hasClosure()) { // ignore cache if there are closures
+            val builder = MappingBuilder<Fr, To>()
+            if (mapping != null) {
+                builder.mapping()
+                builder.map
+            }
+            val mapper2 = ClosureUtils.withOverrides(mapper, builder.map, laMapperImpl.serviceContext)
+            return mapper2.transform(from)
+        }
+
         return mapper.transform(from)
     }
 
@@ -143,6 +159,8 @@ class LaMapper(
         return if (mapping != null) {
             val builder = MappingBuilder<Fr, To>()
             builder.mapping()
+            if (builder.hasClosure && laMapperImpl.serviceContext.config.disableClosureLambdas)
+                throw IllegalArgumentException("Mapping lambda contains closures (access objects out of lambda) but closures are disabled in LaMapper config")
             laMapperImpl.AutoMapperImpl(sourceType, targetType, builder.map)
         } else {
             laMapperImpl.AutoMapperImpl(sourceType, targetType, emptyMap())
@@ -195,11 +213,13 @@ class LaMapper(
 
     open class MappingBuilder<Fr : Any, To> {
         internal val map: MutableMap<String, IMappingBuilderItem<Fr>> = mutableMapOf()
+        internal var hasClosure: Boolean = false
+            private set
 
-        /** "from" class instance - dummy class for shorter access to field. DO NOT use it as object, only as reference to field */
+        /** "from" class instance - dummy object for shorter access to field. DO NOT use it as object, only as reference to field */
         val f: Fr = dummy()
 
-        /** "to" class instance - dummy class for shorter access to field. DO NOT use it as object, only as reference to field */
+        /** "to" class instance - dummy object for shorter access to field. DO NOT use it as object, only as reference to field */
         val t: To = dummy()
 
         // ------- <t> from <f> combinations ------------------
@@ -241,20 +261,17 @@ class LaMapper(
 
         //  To::address from { it.address + ", Vilnius" }
         infix fun <V> KProperty1<To, V>.from(sourceFn: (Fr) -> V) {
-            val returnType = getReturnTypeOfLambda(sourceFn)
-            map[this.name] = LambdaMapping(sourceFn, returnType)
+            addLambdaMapping(this.name, sourceFn)
         }
 
         //  t::address from { it.address + ", Vilnius" }
         infix fun <V> KProperty0<V>.from(sourceFn: (Fr) -> V) {
-            val returnType = getReturnTypeOfLambda(sourceFn)
-            map[this.name] = LambdaMapping(sourceFn, returnType)
+            addLambdaMapping(this.name, sourceFn)
         }
 
         //  t::address from { it.address + ", Vilnius" } (works for records)
         infix fun <V> KCallable<V>.from(sourceFn: (Fr) -> V) {
-            val returnType = getReturnTypeOfLambda(sourceFn)
-            map[this.name] = LambdaMapping(sourceFn, returnType)
+            addLambdaMapping(this.name, sourceFn)
         }
 
         // ------- <f> mapTo <t> combinations -----------------
@@ -303,6 +320,10 @@ class LaMapper(
             }
         }
 
+        private fun isClosure(lambda: Any): Boolean {
+            return lambda.javaClass.declaredFields.any { field -> !field.isSynthetic }
+        }
+
         private fun <T> dummy(): T {
             val o = null as T?
             asNn(o)
@@ -312,6 +333,15 @@ class LaMapper(
         @OptIn(ExperimentalContracts::class)
         private fun <T> asNn(value: T?) {
             contract { returns() implies (value != null) }
+        }
+
+        private fun <V> addLambdaMapping(name: String, sourceFn: (Fr) -> V, retType: KType? = null) {
+            val returnType = retType ?: getReturnTypeOfLambda(sourceFn)
+            val clos = isClosure(sourceFn)
+            if (clos) {
+                hasClosure = true
+            }
+            map[name] = LambdaMapping(sourceFn, returnType, isClosure = clos)
         }
     }
 }

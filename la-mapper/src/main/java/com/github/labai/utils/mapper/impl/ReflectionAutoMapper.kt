@@ -46,7 +46,7 @@ import kotlin.reflect.full.createInstance
  * is default mapper for start
 */
 internal class ReflectionAutoMapper<Fr : Any, To : Any>(
-    private val struct: MappedStruct<Fr, To>,
+    private val struct: IMappedStruct<Fr, To>,
     serviceContext: ServiceContext,
 ) : AutoMapper<Fr, To> {
     private val objectCreator: ObjectCreator<Fr, To> = ObjectCreator(struct.targetType, struct.targetConstructor, struct.paramBinds, serviceContext.config)
@@ -69,7 +69,7 @@ internal class ReflectionAutoMapper<Fr : Any, To : Any>(
         size = struct.propManualBinds.size
         while (++i < size) {
             val mapr = struct.propManualBinds[i]
-            val valTo = mapr.lambdaMapping.mapper.invoke(from)
+            val valTo = mapr.lambdaMapping.mapper(from)
             val valConv = mapr.lambdaMapping.convNnFn.convertValNn(valTo)
             mapr.targetPropWr.setValue(target, valConv)
         }
