@@ -2,6 +2,8 @@ package com.github.labai.utils.convert;
 
 import com.github.labai.utils.convert.LaConvUtils.ClassPairMap;
 import com.github.labai.utils.convert.ext.DeciConverters;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -31,24 +33,24 @@ public class LaConverterRegistry implements IConverterResolver {
     private final Set<IConverterResolver> extResolvers = new LinkedHashSet<>();
     private final ClassPairMap<ITypeConverter<?, ?>> extConverters = new ClassPairMap<>();
 
-    public <Fr, To> void registerConverter(Class<Fr> sourceType, Class<To> targetType, ITypeConverter<Fr, To> converter) {
+    public <Fr, To> void registerConverter(@NotNull Class<Fr> sourceType, @NotNull Class<To> targetType, @NotNull ITypeConverter<Fr, To> converter) {
         extConverters.getOrPut(sourceType, targetType, () -> converter);
     }
 
-    public <Fr, To> void registerExtResolver(IConverterResolver resolver) {
+    public void registerExtResolver(@NotNull IConverterResolver resolver) {
         extResolvers.add(resolver);
     }
 
-    public static <Fr, To> void registerGlobalConverter(Class<Fr> sourceType, Class<To> targetType, ITypeConverter<Fr, To> converter) {
+    public static <Fr, To> void registerGlobalConverter(@NotNull Class<Fr> sourceType, @NotNull Class<To> targetType, @NotNull ITypeConverter<Fr, To> converter) {
         ((LaConverterRegistry) global).extConverters.getOrPut(sourceType, targetType, () -> converter);
     }
 
-    public static <Fr, To> void registerGlobalExtResolver(IConverterResolver resolver) {
+    public static void registerGlobalExtResolver(@NotNull IConverterResolver resolver) {
         ((LaConverterRegistry) global).extResolvers.add(resolver);
     }
 
     @SuppressWarnings({"unchecked"})
-    public <Fr, To> ITypeConverter<Fr, To> getConverter(Class<Fr> sourceType, Class<To> targetType) {
+    public <Fr, To> @Nullable ITypeConverter<Fr, To> getConverter(@NotNull Class<Fr> sourceType, @NotNull Class<To> targetType) {
         // equal match
         if (sourceType.equals(targetType)) {
             return it -> (To) it;

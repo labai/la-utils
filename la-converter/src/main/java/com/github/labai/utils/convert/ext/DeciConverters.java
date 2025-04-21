@@ -1,10 +1,13 @@
 package com.github.labai.utils.convert.ext;
 
-import com.github.labai.utils.convert.LaConverterRegistry;
 import com.github.labai.deci.Deci;
+import com.github.labai.utils.convert.ITypeConverter;
+import com.github.labai.utils.convert.LaConverterRegistry;
+import org.jetbrains.annotations.Nullable;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.function.Function;
 
 /**
  * @author Augustus
@@ -22,19 +25,37 @@ public class DeciConverters {
         }
         if (!exists)
             return;
-        registry.registerConverter(BigDecimal.class, Deci.class, Deci::new);
-        registry.registerConverter(Deci.class, BigDecimal.class, Deci::toBigDecimal);
-        registry.registerConverter(BigInteger.class, Deci.class, bigi -> new Deci(new BigDecimal(bigi)));
-        registry.registerConverter(Deci.class, BigInteger.class, deci -> deci.toBigDecimal().toBigInteger());
-        registry.registerConverter(Long.class, Deci.class, Deci::new);
-        registry.registerConverter(long.class, Deci.class, Deci::new);
-        registry.registerConverter(Deci.class, Long.class, Deci::toLong);
-        registry.registerConverter(Deci.class, long.class, Deci::toLong);
-        registry.registerConverter(Integer.class, Deci.class, Deci::new);
-        registry.registerConverter(int.class, Deci.class, Deci::new);
-        registry.registerConverter(Deci.class, Integer.class, Deci::toInt);
-        registry.registerConverter(Deci.class, int.class, Deci::toInt);
-        registry.registerConverter(String.class, Deci.class, Deci::new);
-        registry.registerConverter(Deci.class, String.class, Deci::toString);
+        registerToDeci(registry, BigDecimal.class, Deci::new);
+        registerToDeci(registry, BigInteger.class, bigi -> new Deci(new BigDecimal(bigi)));
+        registerToDeci(registry, Long.class, Deci::new);
+        registerToDeci(registry, long.class, Deci::new);
+        registerToDeci(registry, Integer.class, Deci::new);
+        registerToDeci(registry, int.class, Deci::new);
+        registerToDeci(registry, String.class, Deci::new);
+
+        registerFromDeci(registry, BigDecimal.class, Deci::toBigDecimal);
+        registerFromDeci(registry, BigInteger.class, deci -> deci.toBigDecimal().toBigInteger());
+        registerFromDeci(registry, Long.class, Deci::toLong);
+        registerFromDeci(registry, long.class, Deci::toLong);
+        registerFromDeci(registry, Integer.class, Deci::toInt);
+        registerFromDeci(registry, int.class, Deci::toInt);
+        registerFromDeci(registry, String.class, Deci::toString);
+    }
+
+    private static <Fr> void registerToDeci(LaConverterRegistry registry, Class<Fr> sourceType, Function<Fr, Deci> convFn) {
+        registry.registerConverter(sourceType, Deci.class, withNullCheck(convFn));
+    }
+
+    private static <To> void registerFromDeci(LaConverterRegistry registry, Class<To> targetType, Function<Deci, To> convFn) {
+        registry.registerConverter(Deci.class, targetType, withNullCheck(convFn));
+    }
+
+    private static <Fr, To> ITypeConverter<Fr, To> withNullCheck(Function<Fr, To> convFn) {
+        return new ITypeConverter<Fr, To>() {
+            @Override
+            public @Nullable To convert(@Nullable Fr from) {
+                return from == null ? null : convFn.apply(from);
+            }
+        };
     }
 }

@@ -1,5 +1,6 @@
 package com.github.labai.utils.convert;
 
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,7 +31,7 @@ public class ExtConvertersTest {
     private static class TestResolver implements IConverterResolver {
         @SuppressWarnings({"rawtypes", "unchecked"})
         @Override
-        public <Fr, To> ITypeConverter getConverter(Class<Fr> sourceType, Class<To> targetType) {
+        public <Fr, To> ITypeConverter getConverter(@NotNull Class<Fr> sourceType, @NotNull Class<To> targetType) {
             if (sourceType == Boolean.class && targetType == String.class)
                 return (b) -> ((Boolean) b ? "yes" : "no");
             return null;

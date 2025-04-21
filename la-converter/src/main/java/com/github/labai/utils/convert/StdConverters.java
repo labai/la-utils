@@ -117,7 +117,7 @@ class StdConverters {
             if (fromClass == String.class)
                 return value -> value == null ? null : new BigInteger(value.toString());
             if (fromClass == boolean.class || fromClass == Boolean.class)
-                return value -> value == null ? null : (Boolean) value ? BigInteger.ONE : BigInteger.ZERO;;
+                return value -> value == null ? null : (Boolean) value ? BigInteger.ONE : BigInteger.ZERO;
             if (fromClass == char.class || fromClass == Character.class)
                 return null; // do not support?
             if (fromClass.isPrimitive())

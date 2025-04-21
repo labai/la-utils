@@ -1,5 +1,7 @@
 package com.github.labai.utils.convert;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -18,47 +20,47 @@ import java.util.Date;
 public final class LaConvDt {
 	private LaConvDt() { }
 
-	public static LocalDate convToLocalDate(LocalDate value) { return value == null ? null : ConvDate.convToLocalDate(value); }
-	public static LocalDate convToLocalDate(LocalDateTime value) { return value == null ? null : ConvDate.convToLocalDate(value); }
-	public static LocalDate convToLocalDate(OffsetDateTime value) { return value == null ? null : ConvDate.convToLocalDate(value); }
-	public static LocalDate convToLocalDate(ZonedDateTime value) { return value == null ? null : ConvDate.convToLocalDate(value); }
-	public static LocalDate convToLocalDate(Instant value) { return value == null ? null : ConvDate.convToLocalDate(value); }
-	public static LocalDate convToLocalDate(Date value) { return value == null ? null : ConvDate.convToLocalDate(value); }
+	public static @Nullable LocalDate convToLocalDate(@Nullable LocalDate value) { return value == null ? null : ConvDate.convToLocalDate(value); }
+	public static @Nullable LocalDate convToLocalDate(@Nullable LocalDateTime value) { return value == null ? null : ConvDate.convToLocalDate(value); }
+	public static @Nullable LocalDate convToLocalDate(@Nullable OffsetDateTime value) { return value == null ? null : ConvDate.convToLocalDate(value); }
+	public static @Nullable LocalDate convToLocalDate(@Nullable ZonedDateTime value) { return value == null ? null : ConvDate.convToLocalDate(value); }
+	public static @Nullable LocalDate convToLocalDate(@Nullable Instant value) { return value == null ? null : ConvDate.convToLocalDate(value); }
+	public static @Nullable LocalDate convToLocalDate(@Nullable Date value) { return value == null ? null : ConvDate.convToLocalDate(value); }
 
-	public static LocalDateTime convToLocalDateTime(LocalDate value) { return value == null ? null : ConvDate.convToLocalDateTime(value); }
-	public static LocalDateTime convToLocalDateTime(LocalDateTime value) { return value == null ? null : ConvDate.convToLocalDateTime(value); }
-	public static LocalDateTime convToLocalDateTime(OffsetDateTime value) { return value == null ? null : ConvDate.convToLocalDateTime(value); }
-	public static LocalDateTime convToLocalDateTime(ZonedDateTime value) { return value == null ? null : ConvDate.convToLocalDateTime(value); }
-	public static LocalDateTime convToLocalDateTime(Instant value) { return value == null ? null : ConvDate.convToLocalDateTime(value); }
-	public static LocalDateTime convToLocalDateTime(Date value) { return value == null ? null : ConvDate.convToLocalDateTime(value); }
+	public static @Nullable LocalDateTime convToLocalDateTime(@Nullable LocalDate value) { return value == null ? null : ConvDate.convToLocalDateTime(value); }
+	public static @Nullable LocalDateTime convToLocalDateTime(@Nullable LocalDateTime value) { return value == null ? null : ConvDate.convToLocalDateTime(value); }
+	public static @Nullable LocalDateTime convToLocalDateTime(@Nullable OffsetDateTime value) { return value == null ? null : ConvDate.convToLocalDateTime(value); }
+	public static @Nullable LocalDateTime convToLocalDateTime(@Nullable ZonedDateTime value) { return value == null ? null : ConvDate.convToLocalDateTime(value); }
+	public static @Nullable LocalDateTime convToLocalDateTime(@Nullable Instant value) { return value == null ? null : ConvDate.convToLocalDateTime(value); }
+	public static @Nullable LocalDateTime convToLocalDateTime(@Nullable Date value) { return value == null ? null : ConvDate.convToLocalDateTime(value); }
 
-	public static OffsetDateTime convToOffsetDateTime(LocalDate value) { return value == null ? null : ConvDate.convToOffsetDateTime(value); }
-	public static OffsetDateTime convToOffsetDateTime(LocalDateTime value) { return value == null ? null : ConvDate.convToOffsetDateTime(value); }
-	public static OffsetDateTime convToOffsetDateTime(OffsetDateTime value) { return value == null ? null : ConvDate.convToOffsetDateTime(value); }
-	public static OffsetDateTime convToOffsetDateTime(ZonedDateTime value) { return value == null ? null : ConvDate.convToOffsetDateTime(value); }
-	public static OffsetDateTime convToOffsetDateTime(Instant value) { return value == null ? null : ConvDate.convToOffsetDateTime(value); }
-	public static OffsetDateTime convToOffsetDateTime(Date value) { return value == null ? null : ConvDate.convToOffsetDateTime(value); }
+	public static @Nullable OffsetDateTime convToOffsetDateTime(@Nullable LocalDate value) { return value == null ? null : ConvDate.convToOffsetDateTime(value); }
+	public static @Nullable OffsetDateTime convToOffsetDateTime(@Nullable LocalDateTime value) { return value == null ? null : ConvDate.convToOffsetDateTime(value); }
+	public static @Nullable OffsetDateTime convToOffsetDateTime(@Nullable OffsetDateTime value) { return value == null ? null : ConvDate.convToOffsetDateTime(value); }
+	public static @Nullable OffsetDateTime convToOffsetDateTime(@Nullable ZonedDateTime value) { return value == null ? null : ConvDate.convToOffsetDateTime(value); }
+	public static @Nullable OffsetDateTime convToOffsetDateTime(@Nullable Instant value) { return value == null ? null : ConvDate.convToOffsetDateTime(value); }
+	public static @Nullable OffsetDateTime convToOffsetDateTime(@Nullable Date value) { return value == null ? null : ConvDate.convToOffsetDateTime(value); }
 
-	public static ZonedDateTime convToZonedDateTime(LocalDate value) { return value == null ? null : ConvDate.convToZonedDateTime(value); }
-	public static ZonedDateTime convToZonedDateTime(LocalDateTime value) { return value == null ? null : ConvDate.convToZonedDateTime(value); }
-	public static ZonedDateTime convToZonedDateTime(OffsetDateTime value) { return value == null ? null : ConvDate.convToZonedDateTime(value); }
-	public static ZonedDateTime convToZonedDateTime(ZonedDateTime value) { return value == null ? null : ConvDate.convToZonedDateTime(value); }
-	public static ZonedDateTime convToZonedDateTime(Instant value) { return value == null ? null : ConvDate.convToZonedDateTime(value); }
-	public static ZonedDateTime convToZonedDateTime(Date value) { return value == null ? null : ConvDate.convToZonedDateTime(value); }
+	public static @Nullable ZonedDateTime convToZonedDateTime(@Nullable LocalDate value) { return value == null ? null : ConvDate.convToZonedDateTime(value); }
+	public static @Nullable ZonedDateTime convToZonedDateTime(@Nullable LocalDateTime value) { return value == null ? null : ConvDate.convToZonedDateTime(value); }
+	public static @Nullable ZonedDateTime convToZonedDateTime(@Nullable OffsetDateTime value) { return value == null ? null : ConvDate.convToZonedDateTime(value); }
+	public static @Nullable ZonedDateTime convToZonedDateTime(@Nullable ZonedDateTime value) { return value == null ? null : ConvDate.convToZonedDateTime(value); }
+	public static @Nullable ZonedDateTime convToZonedDateTime(@Nullable Instant value) { return value == null ? null : ConvDate.convToZonedDateTime(value); }
+	public static @Nullable ZonedDateTime convToZonedDateTime(@Nullable Date value) { return value == null ? null : ConvDate.convToZonedDateTime(value); }
 
-	public static Instant convToInstant(LocalDate value) { return value == null ? null : ConvDate.convToInstant(value); }
-	public static Instant convToInstant(LocalDateTime value) { return value == null ? null : ConvDate.convToInstant(value); }
-	public static Instant convToInstant(OffsetDateTime value) { return value == null ? null : ConvDate.convToInstant(value); }
-	public static Instant convToInstant(ZonedDateTime value) { return value == null ? null : ConvDate.convToInstant(value); }
-	public static Instant convToInstant(Instant value) { return value == null ? null : ConvDate.convToInstant(value); }
-	public static Instant convToInstant(Date value) { return value == null ? null : ConvDate.convToInstant(value); }
+	public static @Nullable Instant convToInstant(@Nullable LocalDate value) { return value == null ? null : ConvDate.convToInstant(value); }
+	public static @Nullable Instant convToInstant(@Nullable LocalDateTime value) { return value == null ? null : ConvDate.convToInstant(value); }
+	public static @Nullable Instant convToInstant(@Nullable OffsetDateTime value) { return value == null ? null : ConvDate.convToInstant(value); }
+	public static @Nullable Instant convToInstant(@Nullable ZonedDateTime value) { return value == null ? null : ConvDate.convToInstant(value); }
+	public static @Nullable Instant convToInstant(@Nullable Instant value) { return value == null ? null : ConvDate.convToInstant(value); }
+	public static @Nullable Instant convToInstant(@Nullable Date value) { return value == null ? null : ConvDate.convToInstant(value); }
 
-	public static Date convToDate(LocalDate value) { return value == null ? null : ConvDate.convToDate(value); }
-	public static Date convToDate(LocalDateTime value) { return value == null ? null : ConvDate.convToDate(value); }
-	public static Date convToDate(OffsetDateTime value) { return value == null ? null : ConvDate.convToDate(value); }
-	public static Date convToDate(ZonedDateTime value) { return value == null ? null : ConvDate.convToDate(value); }
-	public static Date convToDate(Instant value) { return value == null ? null : ConvDate.convToDate(value); }
-	public static Date convToDate(Date value) { return value == null ? null : ConvDate.convToDate(value); }
+	public static @Nullable Date convToDate(@Nullable LocalDate value) { return value == null ? null : ConvDate.convToDate(value); }
+	public static @Nullable Date convToDate(@Nullable LocalDateTime value) { return value == null ? null : ConvDate.convToDate(value); }
+	public static @Nullable Date convToDate(@Nullable OffsetDateTime value) { return value == null ? null : ConvDate.convToDate(value); }
+	public static @Nullable Date convToDate(@Nullable ZonedDateTime value) { return value == null ? null : ConvDate.convToDate(value); }
+	public static @Nullable Date convToDate(@Nullable Instant value) { return value == null ? null : ConvDate.convToDate(value); }
+	public static @Nullable Date convToDate(@Nullable Date value) { return value == null ? null : ConvDate.convToDate(value); }
 
 
 	//

@@ -1,5 +1,8 @@
 package com.github.labai.utils.convert;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,7 +17,7 @@ import java.util.function.Supplier;
 public final class LaConvUtils {
 
     // primitives - fill 0 for numbers, false for boolean. Null for other
-    public static Object convertNull(Class<?> targetType) {
+    public static @Nullable Object convertNull(@NotNull Class<?> targetType) {
         // primitives - fill 0 for numbers, false for boolean
         if (targetType.isPrimitive()) {
             if (targetType == byte.class) return 0;
