@@ -174,13 +174,24 @@ class LaMapper(
         targetType: Class<To>,
         fieldMappers: List<Pair<String, Any>>?,
     ): To {
-        val map = getMapFromJavaPairList<Fr>(fieldMappers)
+        var isCached = true
+        val (map, hasClosure) = getMapFromJavaPairList<Fr>(fieldMappers)
+
+        if (hasClosure && laMapperImpl.serviceContext.config.disableClosureLambdas)
+            throw IllegalArgumentException("Mapping lambda contains closures (access objects out of lambda) but closures are disabled in LaMapper config")
+
+        val hash = fieldMappers?.sumOf { it.first.hashCode() + it.second::class.hashCode() * 31 } ?: 0
 
         @Suppress("UNCHECKED_CAST")
-        val mapper = cache.getOrPut(sourceType.kotlin, targetType.kotlin, fieldMappers ?: listOf<Pair<String, Any>>()) {
+        val mapper = cache.getOrPut(sourceType.kotlin, targetType.kotlin, hash) {
+            isCached = false
             laMapperImpl.AutoMapperImpl(sourceType.kotlin, targetType.kotlin, map)
-        } as AutoMapper<Fr, To>
+        } as AutoMapperImpl<Fr, To>
 
+        if (isCached && mapper.hasClosure()) { // ignore cache if there are closures
+            val mapper2 = ClosureUtils.withOverrides(mapper, map, laMapperImpl.serviceContext)
+            return mapper2.transform(from)
+        }
         return mapper.transform(from)
     }
 
@@ -190,25 +201,32 @@ class LaMapper(
         targetType: Class<To>,
         fieldMappers: List<Pair<String, Any>>?,
     ): AutoMapper<Fr, To> {
-        val map = getMapFromJavaPairList<Fr>(fieldMappers)
+        val (map, hasClosure) = getMapFromJavaPairList<Fr>(fieldMappers)
+        if (hasClosure && laMapperImpl.serviceContext.config.disableClosureLambdas)
+            throw IllegalArgumentException("Mapping lambda contains closures (access objects out of lambda) but closures are disabled in LaMapper config")
         return laMapperImpl.AutoMapperImpl(sourceType.kotlin, targetType.kotlin, map)
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun <Fr : Any> getMapFromJavaPairList(fieldMappers: List<Pair<String, Any>>?): Map<String, IMappingBuilderItem<Fr>> {
+    private fun <Fr : Any> getMapFromJavaPairList(fieldMappers: List<Pair<String, Any>>?): Pair<Map<String, IMappingBuilderItem<Fr>>, Boolean> {
+        var hasClosure = false
         if (fieldMappers.isNullOrEmpty())
-            return mapOf()
+            return Pair(mapOf(), hasClosure)
 
         val map: MutableMap<String, IMappingBuilderItem<Fr>> = mutableMapOf()
         for ((to, from) in fieldMappers) {
             if (from is JavaFunction<*, *>) {
                 val fn = from as JavaFunction<Fr, *>
-                map[to] = LambdaMapping({ fn.apply(it) }, null)
+                val clos = ClosureUtils.isClosure(fn)
+                if (clos) {
+                    hasClosure = true
+                }
+                map[to] = LambdaMapping({ fn.apply(it) }, null, clos)
             } else {
                 error("Invalid 'from' type (${from.javaClass.name}) for target field '$to'")
             }
         }
-        return map
+        return Pair(map, hasClosure)
     }
 
     open class MappingBuilder<Fr : Any, To> {
@@ -320,10 +338,6 @@ class LaMapper(
             }
         }
 
-        private fun isClosure(lambda: Any): Boolean {
-            return lambda.javaClass.declaredFields.any { field -> !field.isSynthetic }
-        }
-
         private fun <T> dummy(): T {
             val o = null as T?
             asNn(o)
@@ -337,7 +351,7 @@ class LaMapper(
 
         private fun <V> addLambdaMapping(name: String, sourceFn: (Fr) -> V, retType: KType? = null) {
             val returnType = retType ?: getReturnTypeOfLambda(sourceFn)
-            val clos = isClosure(sourceFn)
+            val clos = ClosureUtils.isClosure(sourceFn)
             if (clos) {
                 hasClosure = true
             }

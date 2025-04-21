@@ -1,4 +1,5 @@
 import com.github.labai.utils.mapper.LaMapper
+import com.github.labai.utils.mapper.LaMapperJ
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -45,6 +46,7 @@ class LaMapperCacheTest {
 
     @Test
     internal fun test_mappers_caching_closure() {
+        val initialSize = LaMapper.global.cache.getMapSize()
         val from = DtoFrom(5)
 
         for (i in 1..2) {
@@ -52,7 +54,28 @@ class LaMapperCacheTest {
                 DtoTo::arg1 from { i }
                 DtoTo::fld1 from { i }
             }
+            // should use correct closure, not first one
             assertEquals("$i", to.arg1)
+            assertEquals("$i", to.fld1)
         }
+        assertEquals(1, LaMapper.global.cache.getMapSize() - initialSize) // expect only 1 item in cache
+    }
+
+    @Test
+    internal fun test_mappers_java_caching_closure() {
+        val initialSize = LaMapper.global.cache.getMapSize()
+        val from = DtoFrom(5)
+
+        for (i in 1..2) {
+            val to = LaMapperJ.copyFrom(from, DtoTo::class.java, listOf(
+                LaMapperJ.mapFrom("arg1") { i },
+                LaMapperJ.mapFrom("fld1") { i },
+            ))
+            // should use correct closure, not first one
+            assertEquals("$i", to.arg1)
+            assertEquals("$i", to.fld1)
+        }
+
+        assertEquals(1, LaMapper.global.cache.getMapSize() - initialSize) // expect only 1 item in cache
     }
 }

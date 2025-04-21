@@ -7,6 +7,8 @@ import jtest.StructuresInJava.Test1Pojo;
 import kotlin.Pair;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +23,41 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * created on 2023.11.22
  */
 class LaMapperJTest {
+
+    public static class ExamplePerson {
+        public Integer id;
+        public Long personCode;
+        public LocalDateTime regDate;
+        public String firstName;
+        public String surname;
+    }
+
+    public static class ExamplePersonDto {
+        public Long id;
+        public String code;
+        public LocalDate regDate;
+        public String name;
+    }
+
+    @Test
+    void test_example() {
+        ExamplePerson from = new ExamplePerson();
+        from.id = 101;
+        from.personCode = 123456L;
+        from.regDate = LocalDateTime.parse("2022-11-08T12:20:00");
+        from.firstName = "Foo";
+        from.surname = "Boo";
+
+        ExamplePersonDto to = LaMapperJ.copyFrom(from, ExamplePersonDto.class, List.of(
+            mapFrom("code", f -> f.personCode),
+            mapFrom("name", f -> f.firstName + " " + f.surname)
+        ));
+
+        assertEquals(101, to.id);
+        assertEquals(LocalDate.parse("2022-11-08"), to.regDate);
+        assertEquals("123456", to.code);
+        assertEquals("Foo Boo", to.name);
+    }
 
     @Test
     void test1_field_copy() {

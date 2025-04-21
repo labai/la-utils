@@ -17,6 +17,10 @@ import com.github.labai.utils.mapper.impl.MappedStruct.PropManualBind
 */
 internal object ClosureUtils {
 
+    internal fun isClosure(lambda: Any): Boolean {
+        return lambda.javaClass.declaredFields.any { field -> !field.isSynthetic }
+    }
+
     internal fun <Fr: Any, To: Any> withOverrides(
         origMapper: AutoMapperImpl<Fr, To>,
         newMap: Map<String, IMappingBuilderItem<Fr>>,

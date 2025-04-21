@@ -165,8 +165,8 @@ internal class ClassTrioMap<T> {
         return getOrPutImpl(sourceType, targetType, mapperClass, itemFn)
     }
 
-    fun <Fr : Any, To : Any> getOrPut(sourceType: KClass<Fr>, targetType: KClass<To>, mapperRef: List<*>, itemFn: Supplier<T>): T {
-        return getOrPutImpl(sourceType, targetType, mapperRef, itemFn)
+    fun <Fr : Any, To : Any> getOrPut(sourceType: KClass<Fr>, targetType: KClass<To>, hashCode: Int, itemFn: Supplier<T>): T {
+        return getOrPutImpl(sourceType, targetType, hashCode, itemFn)
     }
 
     private fun <Fr : Any, To : Any> getOrPutImpl(sourceType: KClass<Fr>, targetType: KClass<To>, mapperRef: Any?, itemFn: Supplier<T>): T {
