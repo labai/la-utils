@@ -33,8 +33,6 @@ import com.github.labai.utils.mapper.impl.LaMapperImpl.IMappingBuilderItem
 import com.github.labai.utils.mapper.impl.LaMapperImpl.LambdaMapping
 import com.github.labai.utils.mapper.impl.LaMapperImpl.PropMapping
 import org.slf4j.LoggerFactory
-import java.lang.IllegalStateException
-import java.util.function.Function as JavaFunction
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 import kotlin.reflect.KCallable
@@ -47,6 +45,7 @@ import kotlin.reflect.KVisibility.INTERNAL
 import kotlin.reflect.KVisibility.PUBLIC
 import kotlin.reflect.jvm.ExperimentalReflectionOnLambdas
 import kotlin.reflect.jvm.reflect
+import java.util.function.Function as JavaFunction
 
 /**
  * @author Augustus
@@ -82,7 +81,7 @@ class LaMapper(
         internal val disableSyntheticConstructorCall: Boolean = false, // disable direct kotlin synthetic constructor usage for optional parameters
         internal val disableFullCompile: Boolean = false, // disable full compile (used for tests)
         internal val failOnOptimizationError: Boolean = false, // in case of optimization failure throw an error and don't try to use reflection
-        internal val disableClosureLambdas: Boolean = false // disable closure lambdas (which access outer scope context). Mapping with closures is slower
+        internal val disableClosureLambdas: Boolean = false, // disable closure lambdas (which access outer scope context). Mapping with closures is slower
     ) : ILaMapperConfig
 
     companion object {
@@ -132,6 +131,7 @@ class LaMapper(
         mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
     ): To {
         var isCached = true
+
         @Suppress("UNCHECKED_CAST")
         val mapper = cache.getOrPut(sourceType, targetType, if (mapping == null) null else mapping::class) {
             isCached = false

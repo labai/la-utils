@@ -67,10 +67,14 @@ class LaMapperCacheTest {
         val from = DtoFrom(5)
 
         for (i in 1..2) {
-            val to = LaMapperJ.copyFrom(from, DtoTo::class.java, listOf(
-                LaMapperJ.mapFrom("arg1") { i },
-                LaMapperJ.mapFrom("fld1") { i },
-            ))
+            val to = LaMapperJ.copyFrom(
+                from,
+                DtoTo::class.java,
+                listOf(
+                    LaMapperJ.mapFrom("arg1") { i },
+                    LaMapperJ.mapFrom("fld1") { i },
+                ),
+            )
             // should use correct closure, not first one
             assertEquals("$i", to.arg1)
             assertEquals("$i", to.fld1)

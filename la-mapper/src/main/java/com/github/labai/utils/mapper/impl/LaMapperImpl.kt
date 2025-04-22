@@ -84,7 +84,7 @@ internal class LaMapperImpl(
                             manualMappings.filter { it.value is PropMapping }.mapValues { it.value as PropMapping },
                             manualMappings.filter { it.value is LambdaMapping }.mapValues { it.value as LambdaMapping },
                             serviceContext,
-                            manualMappings.any { it.value is LambdaMapping && (it.value as LambdaMapping<Fr>).isClosure }
+                            manualMappings.any { it.value is LambdaMapping && (it.value as LambdaMapping<Fr>).isClosure },
                         )
                         activeMapper = ReflectionAutoMapper(struct, serviceContext)
                         manualMappings = mapOf() // cleanup
@@ -159,6 +159,7 @@ internal class ClassTrioMap<T> {
     private val map: MutableMap<ClassTrio, Pair<ClassTrio, T>> = ConcurrentHashMap()
 
     private data class ClassTrio(val source: KClass<*>, val target: KClass<*>, val mapper: Any?)
+
     private var last: Pair<ClassTrio, T>? = null
 
     fun <Fr : Any, To : Any> getOrPut(sourceType: KClass<Fr>, targetType: KClass<To>, mapperClass: KClass<*>?, itemFn: Supplier<T>): T {

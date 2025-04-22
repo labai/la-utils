@@ -54,17 +54,21 @@ class TestPerformance3 {
 
         val list = createList(size = 10000) { From().apply { aaa = "$it"; bbb = it } }
 
-        runMapTest("lmbd", list) { fr -> reflectionFactory.copyFrom<From, To>(fr) {
-            To::arg2 from { it.aaa }
-            To::arg3 from { it.aaa }
-            To::fld1 from { it.bbb }
-        }}
+        runMapTest("lmbd", list) { fr ->
+            reflectionFactory.copyFrom<From, To>(fr) {
+                To::arg2 from { it.aaa }
+                To::arg3 from { it.aaa }
+                To::fld1 from { it.bbb }
+            }
+        }
 
-        runMapTest("clos", list) { fr -> reflectionFactory.copyFrom<From, To>(fr) {
-            To::arg2 from { iCounter++ }
-            To::arg3 from { iCounter++ }
-            To::fld1 from { iCounter++ }
-        }}
+        runMapTest("clos", list) { fr ->
+            reflectionFactory.copyFrom<From, To>(fr) {
+                To::arg2 from { iCounter++ }
+                To::arg3 from { iCounter++ }
+                To::fld1 from { iCounter++ }
+            }
+        }
 
         runMapTest("newm", list) { fr ->
             val mapper = reflectionFactory.autoMapper<From, To> {
@@ -76,7 +80,7 @@ class TestPerformance3 {
         }
     }
 
-    private fun <Fr, To> runMapTest(testType: String, list: List<Fr>, mapperFn: (fr: Fr) -> To,)  {
+    private fun <Fr, To> runMapTest(testType: String, list: List<Fr>, mapperFn: (fr: Fr) -> To) {
         val repeatCount = 100
 
         println("Warmup")

@@ -3,10 +3,10 @@
 
     <groupId>com.github.labai.utils</groupId>
     <artifactId>la-mapper</artifactId>
-    <version>0.2.3-SNAPSHOT</version>
+    <version>0.2.4-SNAPSHOT</version>
     <name>Mapper</name>
     <packaging>jar</packaging>
-    <description>Data mapper for kotlin</description>
+    <description>Data mapper for kotlin and java</description>
     <url>https://github.com/labai/la-utils/la-mapper</url>
 
     <properties>

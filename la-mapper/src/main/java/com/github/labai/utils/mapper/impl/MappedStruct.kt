@@ -52,7 +52,7 @@ import kotlin.reflect.jvm.javaMethod
  *
  * for internal usage.
  */
-internal interface IMappedStruct<Fr : Any, To : Any>{
+internal interface IMappedStruct<Fr : Any, To : Any> {
     val sourceType: KClass<Fr>
     val targetType: KClass<To>
     val targetConstructor: KFunction<To>?
@@ -68,7 +68,7 @@ internal class MappedStruct<Fr : Any, To : Any>(
     private val manualMappers: Map<String, LambdaMapping<Fr>>,
     serviceContext: ServiceContext,
     internal val hasClosure: Boolean = false,
-): IMappedStruct<Fr, To> {
+) : IMappedStruct<Fr, To> {
     override val targetConstructor: KFunction<To>?
     override val paramBinds: Array<ParamBind<Fr>>
     override val propAutoBinds: Array<PropAutoBind<Fr, To>>
