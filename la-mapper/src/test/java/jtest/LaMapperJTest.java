@@ -153,6 +153,14 @@ class LaMapperJTest {
         assertEquals(expected, res);
     }
 
+    @Test
+    void test4_record_nulls() {
+        var rec = new Record12(null, 2, null, 4, null);
+        var mapper = LaMapperJ.autoMapper(Record12.class, Record12.class);
+        var res = mapper.transform(rec);
+        assertEquals(rec, res);
+    }
+
     private Test1Pojo getMock() {
         var o = new Test1Pojo();
         o.field1 = "f1";

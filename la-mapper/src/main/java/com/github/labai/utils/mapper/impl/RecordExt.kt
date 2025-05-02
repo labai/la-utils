@@ -43,7 +43,8 @@ internal class RecordKParam(
     override val name: String
         get() = rc.name
     override val type: KType by lazy {
-        rc.type.kotlin.createType(List(rc.type.typeParameters.size) { KTypeProjection.STAR })
+        val nullable = !rc.type.isPrimitive // maybe also check @Nonnull/@Nullable?
+        rc.type.kotlin.createType(List(rc.type.typeParameters.size) { KTypeProjection.STAR }, nullable)
     }
 }
 
