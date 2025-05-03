@@ -19,6 +19,10 @@ public class StructuresInJava {
         @Nullable private String prop5;
         private String wrong1x;
         private String wrong2;
+        private String prop6 = "prop6";
+        private String prop7 = "prop7";
+        private String prop8 = "prop8";
+        private String prop9 = "prop9";
 
         public String getProp1() { return prop1; }
         public String getProp2() { return prop2; }
@@ -42,6 +46,19 @@ public class StructuresInJava {
         // not setters
         public String retrieveField2() { return field2; }
         public void assignField2(String value) { field2 = value; }
+
+        // wrong - static
+        public static String getProp6() { return "static_prop6"; }
+
+        // wrong - method with param
+        public String getProp7(String s) { return prop7; }
+
+        // ok - w/o "get" prefix
+        public String prop8() { return "prop8"; }
+
+        // 2 getters
+        public String getProp9() { return "get-" + prop9; }
+        public String prop9() { return "noget-" + prop9; }
     }
 
     public static class Test2PojoConstr {

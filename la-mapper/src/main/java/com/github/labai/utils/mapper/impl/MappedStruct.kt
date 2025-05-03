@@ -33,6 +33,7 @@ import com.github.labai.utils.mapper.impl.MappedStruct.PropAutoBind
 import com.github.labai.utils.mapper.impl.MappedStruct.PropManualBind
 import com.github.labai.utils.mapper.impl.PropAccessUtils.PropertyReader
 import com.github.labai.utils.mapper.impl.PropAccessUtils.PropertyWriter
+import java.lang.reflect.Modifier
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KMutableProperty1
@@ -334,12 +335,20 @@ internal object PropAccessUtils {
         }
     }
 
+    private fun getGetterByFunName(sourceClass: KClass<*>, funName: String, type: KType): KFunction<*>? {
+        return sourceClass.declaredFunctions.find { f ->
+            f.name == funName && f.returnType.classifier == type.classifier
+                && f.parameters.size == 1 // 1st parameter - object instance
+                && !(f.javaMethod?.modifiers?.let { Modifier.isStatic(it) } ?: false)
+        }
+    }
+
     internal fun getGetterByName(sourceClass: KClass<*>, fieldName: String, type: KType): KFunction<*>? {
         if (fieldName.isEmpty())
             return null
         val fnName = "get" + fieldName[0].uppercaseChar() + fieldName.substring(1)
-        return sourceClass.declaredFunctions.find { f -> f.name == fnName && f.returnType == type } // getField()
-            ?: sourceClass.declaredFunctions.find { f -> f.name == fieldName && f.returnType == type } // also field()
+        return getGetterByFunName(sourceClass, fnName, type) // getField()
+            ?: getGetterByFunName(sourceClass, fieldName, type) // also field()
     }
 
     internal fun getSetterByName(sourceClass: KClass<*>, fieldName: String, type: KType): KFunction<*>? {
@@ -347,7 +356,7 @@ internal object PropAccessUtils {
             return null
         val fnName = "set" + fieldName[0].uppercaseChar() + fieldName.substring(1)
         return sourceClass.declaredFunctions
-            .find { it.name == fnName && it.parameters.size == 2 && it.parameters.last().type == type }
+            .find { it.name == fnName && it.parameters.size == 2 && it.parameters.last().type.classifier == type.classifier }
     }
 
     internal fun <T> resolvePropertyReader(
