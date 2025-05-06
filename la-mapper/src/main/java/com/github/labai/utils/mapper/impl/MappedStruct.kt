@@ -337,26 +337,30 @@ internal object PropAccessUtils {
 
     private fun getGetterByFunName(sourceClass: KClass<*>, funName: String, type: KType): KFunction<*>? {
         return sourceClass.declaredFunctions.find { f ->
-            f.name == funName && f.returnType.classifier == type.classifier
-                && f.parameters.size == 1 // 1st parameter - object instance
-                && !(f.javaMethod?.modifiers?.let { Modifier.isStatic(it) } ?: false)
+            f.name == funName && f.returnType.classifier == type.classifier &&
+                f.parameters.size == 1 && // 1st parameter - object instance
+                !(f.javaMethod?.modifiers?.let { Modifier.isStatic(it) } ?: false)
         }
     }
 
     internal fun getGetterByName(sourceClass: KClass<*>, fieldName: String, type: KType): KFunction<*>? {
         if (fieldName.isEmpty())
             return null
+        // btw, "is" prefix is not supported
         val fnName = "get" + fieldName[0].uppercaseChar() + fieldName.substring(1)
-        return getGetterByFunName(sourceClass, fnName, type) // getField()
-            ?: getGetterByFunName(sourceClass, fieldName, type) // also field()
+        return getGetterByFunName(sourceClass, fieldName, type) // field()
+            ?: getGetterByFunName(sourceClass, fnName, type) // getField()
     }
 
     internal fun getSetterByName(sourceClass: KClass<*>, fieldName: String, type: KType): KFunction<*>? {
         if (fieldName.isEmpty())
             return null
         val fnName = "set" + fieldName[0].uppercaseChar() + fieldName.substring(1)
-        return sourceClass.declaredFunctions
-            .find { it.name == fnName && it.parameters.size == 2 && it.parameters.last().type.classifier == type.classifier }
+        return sourceClass.declaredFunctions.find { f ->
+            f.name == fnName && f.parameters.size == 2 &&
+                f.parameters.last().type.classifier == type.classifier &&
+                !(f.javaMethod?.modifiers?.let { Modifier.isStatic(it) } ?: false)
+        }
     }
 
     internal fun <T> resolvePropertyReader(

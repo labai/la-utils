@@ -49,12 +49,16 @@ public class StructuresInJava {
 
         // wrong - static
         public static String getProp6() { return "static_prop6"; }
+        public static void setProp6(String prop6) { }
 
         // wrong - method with param
         public String getProp7(String s) { return prop7; }
+        public void getProp7(String s, String s2) { prop7 = s; }
 
         // ok - w/o "get" prefix
         public String prop8() { return "prop8"; }
+        // such setter isn't used (?)
+        public void prop8(String prop8) { this.prop8 = prop8; }
 
         // 2 getters
         public String getProp9() { return "get-" + prop9; }

@@ -66,14 +66,14 @@ internal object PerfHelper {
     private fun <Fr, To> runForList(
         list: List<Fr>,
         repeat: Int,
-        createToFn: (fr: Fr) -> To,
+        createToFn: ((fr: Fr) -> To)?,
         mapperFn: (fr: Fr) -> To,
         assignFn: (fr: Fr) -> To,
         partialFn: (fr: Fr) -> To,
         reflectionFn: (fr: Fr) -> To,
     ): Map<String, Long> {
         val stats = mutableMapOf<String, Long>()
-        stats["pojo"] = runPojoCopy(list, repeat, createToFn)
+        stats["pojo"] = if (createToFn != null) runPojoCopy(list, repeat, createToFn) else 0
         stats["asgn"] = runAssign(list, repeat, assignFn)
         stats["mapr"] = runMapper(list, repeat, mapperFn)
         stats["part"] = runMapper(list, repeat, partialFn)
@@ -91,14 +91,14 @@ internal object PerfHelper {
 
     fun <Fr, To> testForClasses(
         createFromFn: (iteration: Int) -> Fr,
-        createToFn: (fr: Fr) -> To,
+        createToFn: ((fr: Fr) -> To)?,
         mapperFn: (fr: Fr) -> To,
         assignFn: (fr: Fr) -> To,
         partialFn: (fr: Fr) -> To,
         reflectionFn: (fr: Fr) -> To,
+        repeatCount: Int = 100,
     ) {
         val listSize = 10000
-        val repeatCount = 100
 
         val list = createList(listSize, createFromFn)
 
