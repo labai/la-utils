@@ -11,54 +11,53 @@ import java.util.Map;
  */
 public class LaPojo {
 
-	private static final Map<Class, Map<String, Field>> targetFieldMapCache = new HashMap<>();
+    private static final Map<Class, Map<String, Field>> targetFieldMapCache = new HashMap<>();
 
-	/**
-	 * copies fields directly (w/o setters), no deep copy.
-	 * field from super class will not be accessed (yet?).
-	 *
-	 * By default will use classes cache.
-	 */
-	public static void copyFields(Object source, Object target) {
-		copyFields(source, target, true);
-	}
+    /**
+     * copies fields directly (w/o setters), no deep copy.
+     * field from super class will not be accessed (yet?).
+     *
+     * By default will use classes cache.
+     */
+    public static void copyFields(Object source, Object target) {
+        copyFields(source, target, true);
+    }
 
-	//
-	// if don't want to use cache (e.g. in dev mode) - set cacheClasses to false.
-	//
-	public static void copyFields(Object source, Object target, boolean cacheClasses) {
-		if (cacheClasses == false) {
-			LaReflect.copyFields(source, target);
-			return;
-		}
+    //
+    // if don't want to use cache (e.g. in dev mode) - set cacheClasses to false.
+    //
+    public static void copyFields(Object source, Object target, boolean cacheClasses) {
+        if (cacheClasses == false) {
+            LaReflect.copyFields(source, target);
+            return;
+        }
 
-		LaReflect.copyFields(source, target, getCachedFieldsMap(target));
-	}
+        LaReflect.copyFields(source, target, getCachedFieldsMap(target));
+    }
 
 
-	public static void copyFields(Object source, Object target, boolean cacheClasses, Collection<String> skipFields, Collection<String> copyFields) {
-		if (cacheClasses == false) {
-			LaReflect.copyFields(source, target);
-			return;
-		}
+    public static void copyFields(Object source, Object target, boolean cacheClasses, Collection<String> skipFields, Collection<String> copyFields) {
+        if (cacheClasses == false) {
+            LaReflect.copyFields(source, target);
+            return;
+        }
 
-		LaReflect.copyFields(source, target, getCachedFieldsMap(target));
-	}
+        LaReflect.copyFields(source, target, getCachedFieldsMap(target));
+    }
 
-	//
-	// private
-	//
+    //
+    // private
+    //
 
-	static Map<String, Field> getCachedFieldsMap(Object object) {
-		if (object == null) throw new NullPointerException();
-		Map<String, Field> fieldMap = targetFieldMapCache.get(object.getClass());
-		if (fieldMap == null) {
-			fieldMap = LaReflect.analyzeFields(object);
-			synchronized (targetFieldMapCache) {
-				targetFieldMapCache.put(object.getClass(), fieldMap);
-			}
-		}
-		return fieldMap;
-	}
-
+    static Map<String, Field> getCachedFieldsMap(Object object) {
+        if (object == null) throw new NullPointerException();
+        Map<String, Field> fieldMap = targetFieldMapCache.get(object.getClass());
+        if (fieldMap == null) {
+            fieldMap = LaReflect.analyzeFields(object);
+            synchronized (targetFieldMapCache) {
+                targetFieldMapCache.put(object.getClass(), fieldMap);
+            }
+        }
+        return fieldMap;
+    }
 }

@@ -50,7 +50,7 @@ final class Conf {
     static final String POJOCOPIER_PARENT = "com/github/labai/utils/hardreflect/LaHardCopy$AbstractPojoCopier";
     static final String POJOCOPIER_IMPL_BASE = "PojoCopier";
 
-    static final int JAVA_VERSION = Opcodes.V1_8;
+    static final int JAVA_VERSION = Opcodes.V17;
 
     static final AtomicInteger counter = new AtomicInteger(0);
 

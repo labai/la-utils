@@ -11,7 +11,7 @@
     <description>KeyLock (using PostgreSql)</description>
 
     <properties>
-        <java.version>1.17</java.version>
+        <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <kotlin.version>2.0.21</kotlin.version>
@@ -126,7 +126,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <jvmTarget>1.17</jvmTarget>
+                    <jvmTarget>17</jvmTarget>
                 </configuration>
             </plugin>
             <plugin>

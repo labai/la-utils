@@ -433,17 +433,28 @@ final class Utils {
     }
 
     static Method getGetter(Class<?> pojoClass, String fieldName) {
-        String capitalizedName = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
-        String getterName = "get" + capitalizedName;
         Method getter = null;
+        // w/o prefix - field()
         try {
-            getter = pojoClass.getDeclaredMethod(getterName);
+            getter = pojoClass.getDeclaredMethod(fieldName);
         } catch (NoSuchMethodException e) {
             // look for more
         }
 
-        String booleanName = "is" + capitalizedName;
+        // with "get" prefix - getField()
+        String capitalizedName = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
         if (getter == null) {
+            String getterName = "get" + capitalizedName;
+            try {
+                getter = pojoClass.getDeclaredMethod(getterName);
+            } catch (NoSuchMethodException e) {
+                // look for more
+            }
+        }
+
+        // with "is" prefix - isField() - for booleans only
+        if (getter == null) {
+            String booleanName = "is" + capitalizedName;
             try {
                 getter = pojoClass.getDeclaredMethod(booleanName);
                 if (!getter.getReturnType().equals(Boolean.class) && !getter.getReturnType().equals(boolean.class))

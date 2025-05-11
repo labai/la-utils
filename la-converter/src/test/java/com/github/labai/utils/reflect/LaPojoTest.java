@@ -12,16 +12,16 @@ import java.util.Map;
  */
 public class LaPojoTest {
 
-	static class Pojo1 {
-		String aaa;
-	}
+    static class Pojo1 {
+        String aaa;
+    }
 
-	@Test
-	public void testUsesClassCache() {
-		Pojo1 pojo = new Pojo1();
-		Map<String, Field> map1 = LaPojo.getCachedFieldsMap(pojo);
-		Map<String, Field> map2 = LaPojo.getCachedFieldsMap(pojo);
+    @Test
+    public void testUsesClassCache() {
+        Pojo1 pojo = new Pojo1();
+        Map<String, Field> map1 = LaPojo.getCachedFieldsMap(pojo);
+        Map<String, Field> map2 = LaPojo.getCachedFieldsMap(pojo);
 
-		Assertions.assertSame(map1.get("aaa"), map2.get("aaa"));
-	}
+        Assertions.assertSame(map1.get("aaa"), map2.get("aaa"));
+    }
 }

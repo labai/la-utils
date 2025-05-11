@@ -207,7 +207,6 @@ public class GeneratePojoCopierTest {
         }
     }
 
-
     @Test
     void test_3_pojo_copier_with_conversion() {
         Source03 pojo = new Source03();
@@ -308,6 +307,34 @@ public class GeneratePojoCopierTest {
             new ArrayList<>()
         );
         Target05 res = copier.copyPojo(pojo);
+
+        System.out.println("res " + res);
+        assertEquals(1, res.a01);
+        assertEquals(1, res.a02);
+    }
+
+    public record Record06(
+        Integer a01,
+        int a02
+    ) {
+    }
+
+    @Test
+    void test_6_pojo_copier_to_record() {
+        List<PojoArgDef> argDefs = Arrays.asList(
+            PojoArgDef.forProp(Integer.class, NameOrAccessor.name("a01")),
+            PojoArgDef.forProp(int.class, NameOrAccessor.name("a02"))
+        );
+
+        Record06 fr = new Record06(1, 1);
+
+        PojoCopier<Record06, Record06> copier = LaHardCopy.createPojoCopierClass(
+            fr.getClass(),
+            Record06.class,
+            argDefs,
+            new ArrayList<>()
+        );
+        Record06 res = copier.copyPojo(fr);
 
         System.out.println("res " + res);
         assertEquals(1, res.a01);
