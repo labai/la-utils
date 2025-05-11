@@ -52,10 +52,14 @@ import kotlin.reflect.KClass
 */
 internal class LaMapperAsmCompiler3(private val serviceContext: ServiceContext) {
 
+    internal interface Compiled3AutoMapper<Fr : Any, To : Any> : AutoMapper<Fr, To>
+
     @Suppress("UNCHECKED_CAST")
     internal fun <Fr : Any, To : Any> compiledMapper(struct: MappedStruct<Fr, To>): AutoMapper<Fr, To> {
         var synthConConf: SynthConConf<Fr, To>? = null
-        if (/*!struct.areAllParams &&*/ struct.targetConstructor != null) {
+        if (struct.targetType.java.isRecord) {
+            // all params are mandatory for record
+        } else if (/*!struct.areAllParams &&*/ struct.targetConstructor != null && !struct.targetType.java.isRecord) {
             synthConConf = SynthConstructorUtils.prepareSynthConParams(struct.targetType, struct.paramBinds)
         } else if (struct.targetType.java.constructors.none { it.parameterCount == 0 }) {
             throw IllegalArgumentException("Class ${struct.targetType} doesn't have no-argument constructor")
@@ -105,7 +109,7 @@ internal class LaMapperAsmCompiler3(private val serviceContext: ServiceContext) 
             propDefsAut + propDefsMan,
         )
 
-        return object : AutoMapper<Fr, To> {
+        return object : Compiled3AutoMapper<Fr, To> {
             override fun transform(from: Fr): To {
                 return copier.copyPojo(from) as To
             }

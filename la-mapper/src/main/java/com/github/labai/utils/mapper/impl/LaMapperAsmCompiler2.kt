@@ -64,6 +64,8 @@ import kotlin.reflect.KType
 */
 internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) {
 
+    internal interface Compiled2AutoMapper<Fr : Any, To : Any> : AutoMapper<Fr, To>
+
     internal fun <Fr : Any, To : Any> compiledMapper(struct: MappedStruct<Fr, To>): AutoMapper<Fr, To> {
         // create on reader object for params
         //
@@ -143,7 +145,7 @@ internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) 
             compiledPropManualBinds = struct.propManualBinds
         }
 
-        return object : AutoMapper<Fr, To> {
+        return object : Compiled2AutoMapper<Fr, To> {
             override fun transform(from: Fr): To {
                 multiReaderMainCon?.readValues(from)
 

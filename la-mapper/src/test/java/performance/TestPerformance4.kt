@@ -14,24 +14,27 @@ import org.junit.jupiter.api.Test
  *
  * with records
  *  60 ms - manual create
- *  720 ms - part compile
- *  1150 ms - reflection
+ *  155 ms - full compile (default mapper)
+ *  750 ms - part compile
+ *  1170 ms - reflection
  *
 */
 class TestPerformance4 {
     private val reflectionLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(disableCompile = true))
     private val partialCompiledFactory = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(disableFullCompile = true))
+    private val fullCompiledFactory = LaMapper(LaConverterRegistry.global, LaMapperConfig())
 
     @Test
     @Disabled
     fun test_performance_record() {
         val reflectionMapper = getMapper(reflectionLaMapper)
         val partialCompiledMapper: AutoMapper<Record12, Record12> = getMapper(partialCompiledFactory)
+        val fullCompiledMapper: AutoMapper<Record12, Record12> = getMapper(fullCompiledFactory)
 
         PerfHelper.testForClasses(
             createFromFn = { createFrom(it) },
             createToFn = null,
-            mapperFn = { fr -> LaMapper.copyFrom(fr) },
+            mapperFn = { fr -> fullCompiledMapper.transform(fr) /*LaMapper.copyFrom(fr)*/ },
             assignFn = { fr -> Record12(fr.v01, fr.v02, fr.v03, fr.v04, fr.v06) },
             partialFn = { fr -> partialCompiledMapper.transform(fr) },
             reflectionFn = { fr -> reflectionMapper.transform(fr) },

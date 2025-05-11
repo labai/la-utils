@@ -67,7 +67,8 @@ internal class LaMapperImpl(
         private var manualMappings: Map<String, IMappingBuilderItem<Fr>> = mapOf(),
     ) : AutoMapper<Fr, To> {
 
-        private lateinit var activeMapper: AutoMapper<Fr, To>
+        internal lateinit var activeMapper: AutoMapper<Fr, To>
+            private set
         internal lateinit var struct: MappedStruct<Fr, To>
         private val isInitialized = AtomicBoolean(false)
 
@@ -101,7 +102,7 @@ internal class LaMapperImpl(
                             ?: struct.propAutoBinds.firstOrNull { it.sourcePropRd.klass.isValue || it.targetPropWr.klass.isValue }
                             ?: struct.propManualBinds.firstOrNull { it.targetPropWr.klass.isValue }
                         try {
-                            activeMapper = if (hasValueClass != null || config.disableSyntheticConstructorCall || config.disableFullCompile || struct.targetType.java.isRecord) {
+                            activeMapper = if (hasValueClass != null || config.disableSyntheticConstructorCall || config.disableFullCompile) {
                                 LaMapper.logger.trace("Use partial compile for $sourceType to $targetType mapper")
                                 laMapperAsmCompiler2.compiledMapper(struct)
                             } else {

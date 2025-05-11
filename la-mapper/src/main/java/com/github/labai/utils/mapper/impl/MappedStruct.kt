@@ -346,7 +346,7 @@ internal object PropAccessUtils {
     internal fun getGetterByName(sourceClass: KClass<*>, fieldName: String, type: KType): KFunction<*>? {
         if (fieldName.isEmpty())
             return null
-        // btw, "is" prefix is not supported
+        // "is" prefix is not supported (is needed?)
         val fnName = "get" + fieldName[0].uppercaseChar() + fieldName.substring(1)
         return getGetterByFunName(sourceClass, fieldName, type) // field()
             ?: getGetterByFunName(sourceClass, fnName, type) // getField()
