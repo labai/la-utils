@@ -26,7 +26,6 @@ package com.github.labai.utils.mapper.impl
 import com.github.labai.utils.hardreflect.LaHardCopy
 import com.github.labai.utils.hardreflect.LaHardCopy.PojoArgDef
 import com.github.labai.utils.hardreflect.LaHardCopy.PojoCopyPropDef
-import com.github.labai.utils.hardreflect.LaHardReflect.NameOrAccessor
 import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.impl.PropAccessUtils.toNameOrAccessor
 import com.github.labai.utils.mapper.impl.SynthConstructorUtils.SynthConConf
@@ -59,7 +58,7 @@ internal class LaMapperAsmCompiler3(private val serviceContext: ServiceContext) 
         var synthConConf: SynthConConf<Fr, To>? = null
         if (struct.targetType.java.isRecord) {
             // all params are mandatory for record
-        } else if (/*!struct.areAllParams &&*/ struct.targetConstructor != null && !struct.targetType.java.isRecord) {
+        } else if (struct.targetConstructor != null) {
             synthConConf = SynthConstructorUtils.prepareSynthConParams(struct.targetType, struct.paramBinds)
         } else if (struct.targetType.java.constructors.none { it.parameterCount == 0 }) {
             throw IllegalArgumentException("Class ${struct.targetType} doesn't have no-argument constructor")
@@ -89,8 +88,12 @@ internal class LaMapperAsmCompiler3(private val serviceContext: ServiceContext) 
             }
             argd
         } else {
-            struct.paramBinds.map {
-                PojoArgDef.forProp((it.param.type.classifier as KClass<*>).java, NameOrAccessor.name(it.param.name), it.convFn)
+            struct.paramBinds.map { prm ->
+                if (prm.sourcePropRd != null) {
+                    PojoArgDef.forProp((prm.param.type.classifier as KClass<*>).java, prm.sourcePropRd.toNameOrAccessor(), prm.convFn)
+                } else {
+                    PojoArgDef.forSupplier((prm.param.type.classifier as KClass<*>).java, prm.lambdaMapping!!.mapper as ((Any) -> Any)?, prm.convFn)
+                }
             }
         }
 

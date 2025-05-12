@@ -323,6 +323,22 @@ class LaMapperTest {
         assertEquals(1, res.v04)
     }
 
+    @JvmRecord
+    data class Dto12(
+        val v01: Long = 1L,
+    )
+
+    @ParameterizedTest
+    @MethodSource(MappersConfig.ENGINES)
+    fun test12_record_with_mapper(engine: String) {
+        val mapper = MappersConfig.getMapper<Dto12, Dto12>(engine) {
+            Dto12::v01 from { 4 }
+        }
+        val from = Dto12()
+        val res = mapper.transform(from)
+        assertEquals(4, res.v01)
+    }
+
     private fun assertEqBigDecimal(expectedAsStr: String, value: BigDecimal) {
         assertTrue(value.compareTo(BigDecimal(expectedAsStr)) == 0, "Expected '$expectedAsStr', got '$value'")
     }

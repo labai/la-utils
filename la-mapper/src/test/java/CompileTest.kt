@@ -10,6 +10,7 @@ import com.github.labai.utils.mapper.impl.LaMapperImpl.AutoMapperImpl
 import com.github.labai.utils.mapper.impl.ServiceContext
 import jtest.StructuresInJava.Record12
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrowsExactly
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.reflect.KClass
@@ -80,17 +81,20 @@ class CompileTest {
     @JvmInline
     value class Type1(val i: Int)
 
-    class Pojo1 {
+    class PojoWithValue {
         var v01: Long? = null
         var v02: Type1 = Type1(2)
     }
 
     @Test
     fun test_compile_type() {
+        val pojoMapper = compileLaMapper.autoMapper(Pojo12::class, Pojo12::class) as AutoMapperImpl
+        assertIsAsm3(pojoMapper)
+
         val recordMapper = compileLaMapper.autoMapper(Record12::class, Record12::class) as AutoMapperImpl
         assertIsAsm3(recordMapper)
 
-        val valueMapper = compileLaMapper.autoMapper(Pojo1::class, Pojo1::class) as AutoMapperImpl
+        val valueMapper = compileLaMapper.autoMapper(PojoWithValue::class, PojoWithValue::class) as AutoMapperImpl
         assertIsAsm2(valueMapper)
 
         val noFullCompileLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(startCompileAfterIterations = 0, disableFullCompile = true))
@@ -100,6 +104,21 @@ class CompileTest {
         val noSynthConstrLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(startCompileAfterIterations = 0, disableSyntheticConstructorCall = true))
         val recordMapper3 = noSynthConstrLaMapper.autoMapper(Record12::class, Record12::class) as AutoMapperImpl
         assertIsAsm2(recordMapper3)
+    }
+
+    @Test
+    fun test_compileException() {
+        // default mapper ignores exception and leave ReflectionMapper
+        val voidMapper1 = compileLaMapper.autoMapper(Void::class, Void::class) as AutoMapperImpl
+        voidMapper1.init()
+
+        // mapper with failOnOptimizationError=true
+        val failOnErrorCompileLaMapper = LaMapper(LaConverterRegistry.global, LaMapperConfig().copy(startCompileAfterIterations = 0, failOnOptimizationError = true))
+        val voidMapper2 = failOnErrorCompileLaMapper.autoMapper(Void::class, Void::class) as AutoMapperImpl
+        assertThrowsExactly(IllegalArgumentException::class.java) {
+            // throws: Class class java.lang.Void doesn't have no-argument constructor
+            voidMapper2.init()
+        }
     }
 
     private fun <Fr : Any, To : Any> assertIsAsm2(autoMapper: AutoMapperImpl<Fr, To>) {
