@@ -434,19 +434,20 @@ final class Utils {
 
     static Method getGetter(Class<?> pojoClass, String fieldName) {
         Method getter = null;
-        // w/o prefix - field()
+
+        // with "get" prefix - getField()
+        String capitalizedName = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+        String getterName = "get" + capitalizedName;
         try {
-            getter = pojoClass.getDeclaredMethod(fieldName);
+            getter = pojoClass.getDeclaredMethod(getterName);
         } catch (NoSuchMethodException e) {
             // look for more
         }
 
-        // with "get" prefix - getField()
-        String capitalizedName = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+        // w/o prefix - field()
         if (getter == null) {
-            String getterName = "get" + capitalizedName;
             try {
-                getter = pojoClass.getDeclaredMethod(getterName);
+                getter = pojoClass.getDeclaredMethod(fieldName);
             } catch (NoSuchMethodException e) {
                 // look for more
             }
@@ -473,13 +474,24 @@ final class Utils {
     }
 
     static Method getSetter(Class<?> pojoClass, String fieldName) {
+        // with "set" prefix - setField(value)
         String capitalizedName = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
         String setterName = "set" + capitalizedName;
-        return Arrays.stream(pojoClass.getDeclaredMethods())
+        Method setter = Arrays.stream(pojoClass.getDeclaredMethods())
             .filter(m -> m.getName().equals(setterName)
                 && m.getParameterCount() == 1
                 && !Modifier.isStatic(m.getModifiers()))
             .findFirst()
             .orElse(null);
+        if (setter == null) {
+            // w/o prefix - field(value)
+            setter = Arrays.stream(pojoClass.getDeclaredMethods())
+                .filter(m -> m.getName().equals(fieldName)
+                    && m.getParameterCount() == 1
+                    && !Modifier.isStatic(m.getModifiers()))
+                .findFirst()
+                .orElse(null);
+        }
+        return setter;
     }
 }
