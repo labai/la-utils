@@ -44,6 +44,7 @@ import kotlin.reflect.full.declaredFunctions
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.javaMethod
+import kotlin.reflect.jvm.javaType
 
 /*
  * @author Augustus
@@ -346,21 +347,31 @@ internal object PropAccessUtils {
     internal fun getGetterByName(sourceClass: KClass<*>, fieldName: String, type: KType): KFunction<*>? {
         if (fieldName.isEmpty())
             return null
-        // "is" prefix is not supported (is needed?)
         val fnName = "get" + fieldName[0].uppercaseChar() + fieldName.substring(1)
-        return getGetterByFunName(sourceClass, fieldName, type) // field()
-            ?: getGetterByFunName(sourceClass, fnName, type) // getField()
+        val fnIsName = if (type.javaType.typeName == "java.lang.Boolean" || type.javaType.typeName == "boolean") {
+            "is" + fieldName[0].uppercaseChar() + fieldName.substring(1)
+        } else {
+            null
+        }
+        return getGetterByFunName(sourceClass, fnName, type) // getField()
+            ?: getGetterByFunName(sourceClass, fieldName, type) // field()
+            ?: fnIsName?.let { getGetterByFunName(sourceClass, it, type) } // isField()
+    }
+
+    private fun getSetterByFunName(sourceClass: KClass<*>, funName: String, type: KType): KFunction<*>? {
+        return sourceClass.declaredFunctions.find { f ->
+            f.name == funName && f.parameters.size == 2 &&
+                f.parameters.last().type.classifier == type.classifier &&
+                !(f.javaMethod?.modifiers?.let { Modifier.isStatic(it) } ?: false)
+        }
     }
 
     internal fun getSetterByName(sourceClass: KClass<*>, fieldName: String, type: KType): KFunction<*>? {
         if (fieldName.isEmpty())
             return null
         val fnName = "set" + fieldName[0].uppercaseChar() + fieldName.substring(1)
-        return sourceClass.declaredFunctions.find { f ->
-            f.name == fnName && f.parameters.size == 2 &&
-                f.parameters.last().type.classifier == type.classifier &&
-                !(f.javaMethod?.modifiers?.let { Modifier.isStatic(it) } ?: false)
-        }
+        return getSetterByFunName(sourceClass, fnName, type) // setField(value)
+            ?: getSetterByFunName(sourceClass, fieldName, type) // field(value)
     }
 
     internal fun <T> resolvePropertyReader(

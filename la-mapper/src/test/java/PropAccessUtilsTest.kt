@@ -3,6 +3,7 @@ import jtest.StructuresInJava.Test1Pojo
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import kotlin.reflect.full.createType
@@ -23,7 +24,7 @@ class PropAccessUtilsTest {
         "prop6,", // static
         "prop7,", // getter with param
         "prop8,prop8",
-        "prop9,noget-prop9",
+        "prop9,get-prop9",
     )
     fun test_getters(prop: String, expectedValue: String?) {
         val obj = Test1Pojo()
@@ -34,6 +35,21 @@ class PropAccessUtilsTest {
         assertEquals(expectedValue, getter?.call(obj))
     }
 
+    @Test
+    fun test_getters_boolean() {
+        val obj = Test1Pojo()
+
+        val getter1 = PropAccessUtils.getGetterByName(Test1Pojo::class, "prop10", Test1Pojo::isProp10.returnType)
+        assertEquals(false, getter1?.call(obj))
+
+        val getter2 = PropAccessUtils.getGetterByName(Test1Pojo::class, "prop11", Test1Pojo::isProp11.returnType)
+        assertEquals(false, getter2?.call(obj))
+
+        // should not find, as not Boolean
+        val getter3 = PropAccessUtils.getGetterByName(Test1Pojo::class, "prop12", Test1Pojo::isProp12.returnType)
+        assertEquals(null, getter3)
+    }
+
     @ParameterizedTest
     @CsvSource(
         "prop2,ok",
@@ -42,7 +58,7 @@ class PropAccessUtilsTest {
         "prop5,ok",
         "prop6,fail", // static
         "prop7,fail", // with 2nd param
-        "prop8,fail", // w/o "set"
+        "prop8,ok", // w/o "set"
     )
     fun test_setters(prop: String, status: String) {
         val obj = Test1Pojo()

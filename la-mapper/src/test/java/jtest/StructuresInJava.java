@@ -24,6 +24,10 @@ public class StructuresInJava {
         private String prop8 = "prop8";
         private String prop9 = "prop9";
 
+        private Boolean prop10 = Boolean.FALSE;
+        private boolean prop11 = false;
+        private String prop12 = "false";
+
         public String getProp1() { return prop1; }
         public String getProp2() { return prop2; }
         public void setProp2(String value) { prop2 = value; }
@@ -56,13 +60,19 @@ public class StructuresInJava {
         public void getProp7(String s, String s2) { prop7 = s; }
 
         // ok - w/o "get" prefix
-        public String prop8() { return "prop8"; }
-        // such setter isn't used (?)
+        public String prop8() { return prop8; }
         public void prop8(String prop8) { this.prop8 = prop8; }
 
         // 2 getters
         public String getProp9() { return "get-" + prop9; }
+        public void setProp9(String prop9) {this.prop9 = prop9;}
         public String prop9() { return "noget-" + prop9; }
+        public void prop9(String prop9) {this.prop9 = prop9;}
+
+        // "is" prefix
+        public Boolean isProp10() {return prop10;}
+        public boolean isProp11() {return prop11;}
+        public String isProp12() {return prop12;}
     }
 
     public static class Test2PojoConstr {

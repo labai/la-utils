@@ -1,5 +1,9 @@
 Version history
 
+0.3.0 (2025-05)
+- compile records
+- fix getters
+
 0.2.3 (2025-04)
 - fix closures
 - add records
