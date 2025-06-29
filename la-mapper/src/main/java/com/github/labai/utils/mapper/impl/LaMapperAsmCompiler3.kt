@@ -27,6 +27,8 @@ import com.github.labai.utils.hardreflect.LaHardCopy
 import com.github.labai.utils.hardreflect.LaHardCopy.PojoArgDef
 import com.github.labai.utils.hardreflect.LaHardCopy.PojoCopyPropDef
 import com.github.labai.utils.mapper.AutoMapper
+import com.github.labai.utils.mapper.impl.MappedStruct.ParamBind
+import com.github.labai.utils.mapper.impl.MappedStruct.PropAutoBind
 import com.github.labai.utils.mapper.impl.PropAccessUtils.toNameOrAccessor
 import com.github.labai.utils.mapper.impl.SynthConstructorUtils.SynthConConf
 import kotlin.jvm.internal.DefaultConstructorMarker
@@ -70,10 +72,8 @@ internal class LaMapperAsmCompiler3(private val serviceContext: ServiceContext) 
                     val nullOr0 = synthConConf.synthArgsTemplate[i]
                     val p = struct.targetConstructor.parameters[i]
                     PojoArgDef.forConstant((p.type.classifier as KClass<*>).java, nullOr0)
-                } else if (prm.sourcePropRd != null) {
-                    PojoArgDef.forProp((prm.param.type.classifier as KClass<*>).java, prm.sourcePropRd.toNameOrAccessor(), prm.convFn)
                 } else {
-                    PojoArgDef.forSupplier((prm.param.type.classifier as KClass<*>).java, prm.lambdaMapping!!.mapper as ((Any) -> Any)?, prm.convFn)
+                    prm.toHardCopyArgDef()
                 }
             }.toMutableList()
             // add addition params for kotlin synthetic constructor
@@ -88,25 +88,17 @@ internal class LaMapperAsmCompiler3(private val serviceContext: ServiceContext) 
             }
             argd
         } else {
-            struct.paramBinds.map { prm ->
-                if (prm.sourcePropRd != null) {
-                    PojoArgDef.forProp((prm.param.type.classifier as KClass<*>).java, prm.sourcePropRd.toNameOrAccessor(), prm.convFn)
-                } else {
-                    PojoArgDef.forSupplier((prm.param.type.classifier as KClass<*>).java, prm.lambdaMapping!!.mapper as ((Any) -> Any)?, prm.convFn)
-                }
-            }
+            struct.paramBinds.map { it.toHardCopyArgDef() }
         }
 
-        val propDefsAut = struct.propAutoBinds.map {
-            PojoCopyPropDef.forAuto(it.sourcePropRd.toNameOrAccessor(), it.targetPropWr.toNameOrAccessor(), it.convNnFn)
-        }
+        val propDefsAut = struct.propAutoBinds.map { it.toHardCopyPropDef() }
 
         val propDefsMan = struct.propManualBinds.map {
             PojoCopyPropDef.forManual(it.lambdaMapping.mapper, it.targetPropWr.toNameOrAccessor(), it.lambdaMapping.convNnFn)
         }
 
         val copier = LaHardCopy.createPojoCopierClass<Fr, To>(
-            struct.sourceType.java,
+            struct.sourceStruct.type.java,
             struct.targetType.java,
             argDefs,
             propDefsAut + propDefsMan,
@@ -117,5 +109,27 @@ internal class LaMapperAsmCompiler3(private val serviceContext: ServiceContext) 
                 return copier.copyPojo(from) as To
             }
         }
+    }
+}
+
+@Suppress("UNCHECKED_CAST")
+internal fun <Fr : Any> ParamBind<Fr>.toHardCopyArgDef(): PojoArgDef {
+    val clazz = (this.param.type.classifier as KClass<*>).java
+    return if (this.sourcePropRd != null) {
+        if (this.sourcePropRd.isFieldOrAccessor()) {
+            PojoArgDef.forProp(clazz, this.sourcePropRd.toNameOrAccessor(), this.convFn)
+        } else { // used for "TargetBuilder"
+            PojoArgDef.forSupplier(clazz, { fr: Fr -> this.sourcePropRd.getValue(fr) } as ((Any) -> Any)?, this.convFn)
+        }
+    } else {
+        PojoArgDef.forSupplier(clazz, this.lambdaMapping!!.mapper as ((Any) -> Any)?, this.convFn)
+    }
+}
+
+internal fun <Fr : Any, To : Any> PropAutoBind<Fr, To>.toHardCopyPropDef(): PojoCopyPropDef {
+    return if (this.sourcePropRd.isFieldOrAccessor()) {
+        PojoCopyPropDef.forAuto(this.sourcePropRd.toNameOrAccessor(), this.targetPropWr.toNameOrAccessor(), this.convNnFn)
+    } else { // used for "TargetBuilder"
+        PojoCopyPropDef.forManual<Fr>({ this.sourcePropRd.getValue(it) }, this.targetPropWr.toNameOrAccessor(), this.convNnFn)
     }
 }

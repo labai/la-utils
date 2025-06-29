@@ -74,7 +74,7 @@ internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) 
         val objectCreator: ObjectCreator<Fr, To>
         val multiReaderMainCon: MultiReaderMain<Fr>?
         if (propsPrmFr.isNotEmpty()) {
-            val compiledReader = LaHardReflect.createMultiReaderClassForProps(struct.sourceType.java, propsPrmFr)
+            val compiledReader = LaHardReflect.createMultiReaderClassForProps(struct.sourceStruct.type.java, propsPrmFr)
             multiReaderMainCon = MultiReaderMain(compiledReader)
             var pos = 0
             val compiledParamBind = struct.paramBinds.map { orig ->
@@ -105,7 +105,7 @@ internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) 
         val multiWriterMainAut: MultiWriterMain<To>?
         val compiledPropAutoBinds: Array<PropAutoBind<Fr, To>>
         if (propsAutFr.isNotEmpty() || propsAutTo.isNotEmpty()) {
-            val compiledReader = if (propsAutFr.isEmpty()) null else LaHardReflect.createMultiReaderClassForProps(struct.sourceType.java, propsAutFr)
+            val compiledReader = if (propsAutFr.isEmpty()) null else LaHardReflect.createMultiReaderClassForProps(struct.sourceStruct.type.java, propsAutFr)
             val compiledWriter = if (propsAutTo.isEmpty()) null else LaHardReflect.createMultiWriterClassForProps(struct.targetType.java, propsAutTo)
             multiReaderMainAut = if (compiledReader == null) null else MultiReaderMain(compiledReader)
             multiWriterMainAut = if (compiledWriter == null) null else MultiWriterMain(compiledWriter, propsAutTo.size)

@@ -55,7 +55,7 @@ import kotlin.reflect.jvm.javaType
  * for internal usage.
  */
 internal interface IMappedStruct<Fr : Any, To : Any> {
-    val sourceType: KClass<Fr>
+    val sourceStruct: ISourceStruct<Fr>
     val targetType: KClass<To>
     val targetConstructor: KFunction<To>?
     val paramBinds: Array<ParamBind<Fr>>
@@ -63,8 +63,14 @@ internal interface IMappedStruct<Fr : Any, To : Any> {
     val propManualBinds: Array<PropManualBind<Fr, To>>
 }
 
+internal interface ISourceStruct<Fr : Any> {
+    val type: KClass<Fr>
+    fun get(name: String?): PropertyReader<Fr>?
+    operator fun contains(name: String?) = name != null && get(name) != null
+}
+
 internal class MappedStruct<Fr : Any, To : Any>(
-    override val sourceType: KClass<Fr>,
+    override val sourceStruct: ISourceStruct<Fr>,
     override val targetType: KClass<To>,
     private val propMappers: Map<String, PropMapping<Fr>>,
     private val manualMappers: Map<String, LambdaMapping<Fr>>,
@@ -89,17 +95,15 @@ internal class MappedStruct<Fr : Any, To : Any>(
             targetType.primaryConstructor
         }
 
-        val sourcePropsByName: Map<String, PropertyReader<Fr>> = getSourceMemberProps(sourceType)
-            .associateBy { it.name }
         val targetFieldMap: Map<String, PropertyWriter<To>> = getTargetMemberProps(targetType)
             .associateBy { it.name }
         val targetArgsMandatory: Array<KParameter> = targetConstructor?.parameters
-            ?.filter { it.name in manualMappers || it.name in propMappers || it.name in sourcePropsByName || !it.isOptional }
+            ?.filter { it.name in manualMappers || it.name in propMappers || it.name in sourceStruct || !it.isOptional }
             ?.toTypedArray()
             ?: arrayOf() // may be null for Java classes - then will use no-arg constructor
 
-        val autoProp = initPropAutoMappers(sourceType, targetType, skip = manualMappers.keys + propMappers.keys + targetArgsMandatory.mapNotNull { it.name })
-        val manProp = initPropManualMappers(sourceType, targetType, propMappers)
+        val autoProp = initPropAutoMappers(sourceStruct, targetType, skip = manualMappers.keys + propMappers.keys + targetArgsMandatory.mapNotNull { it.name })
+        val manProp = initPropManualMappers(sourceStruct, targetType, propMappers)
         propAutoBinds = (autoProp + manProp).toTypedArray()
 
         propManualBinds = manualMappers.filter { arg -> targetConstructor?.parameters?.none { it.name == arg.key } ?: true }
@@ -115,7 +119,7 @@ internal class MappedStruct<Fr : Any, To : Any>(
                 ParamBind(param, manMapper, null, manMapper.convNnFn, dataConverters)
             } else {
                 val frName = propMappers[param.name]?.frName ?: param.name
-                val prop = sourcePropsByName[frName]
+                val prop = sourceStruct.get(frName)
                 if (prop == null && !param.isOptional)
                     throw IllegalArgumentException("Parameter '${param.name}' is missing")
                 if (prop == null) {
@@ -200,21 +204,6 @@ internal class MappedStruct<Fr : Any, To : Any>(
         }
     }
 
-    private fun getSourceMemberProps(sourceType: KClass<Fr>): List<PropertyReader<Fr>> {
-        return sourceType.memberProperties
-            .mapNotNull {
-                if (it.visibility in config.visibilities)
-                    PropAccessUtils.resolvePropertyReader(it.name, it, null)
-                else {
-                    val getter: KFunction<*>? = PropAccessUtils.getGetterByName(sourceType, it.name, it.returnType) // case for java getters
-                    if (getter != null && getter.visibility in config.visibilities)
-                        PropAccessUtils.resolvePropertyReader(it.name, null, getter)
-                    else
-                        null
-                }
-            }
-    }
-
     private fun getTargetMemberProps(targetType: KClass<To>): List<PropertyWriter<To>> {
         return targetType.memberProperties
             .mapNotNull {
@@ -232,18 +221,14 @@ internal class MappedStruct<Fr : Any, To : Any>(
     }
 
     private fun initPropAutoMappers(
-        sourceClass: KClass<Fr>,
+        sourceStruct: ISourceStruct<Fr>,
         targetClass: KClass<To>,
         skip: Set<String>,
     ): List<PropAutoBind<Fr, To>> {
-        val propsFr: Map<String, PropertyReader<Fr>> = getSourceMemberProps(sourceClass)
-            .filterNot { it.name in skip }
-            .associateBy { it.name }
-
         return getTargetMemberProps(targetClass)
-            .filter { it.name in propsFr }
-            .map {
-                val pfr = propsFr[it.name]!!
+            .filterNot { it.name in skip }
+            .mapNotNull {
+                val pfr = sourceStruct.get(it.name) ?: return@mapNotNull null
                 val convNnFn = dataConverters.getConverterNn(pfr.klass, it.klass, it.returnType.isMarkedNullable)
                 PropAutoBind(
                     sourcePropRd = pfr,
@@ -254,19 +239,15 @@ internal class MappedStruct<Fr : Any, To : Any>(
     }
 
     private fun initPropManualMappers(
-        sourceClass: KClass<Fr>,
+        sourceStruct: ISourceStruct<Fr>,
         targetClass: KClass<To>,
         propMappers: Map<String, PropMapping<Fr>>,
     ): List<PropAutoBind<Fr, To>> {
-        val frPropNames = propMappers.values.map { it.frName }.toSet()
-        val toPropNames = propMappers.keys
-        val propsFr: Map<String, PropertyReader<Fr>> = getSourceMemberProps(sourceClass)
-            .filter { it.name in frPropNames }
-            .associateBy { it.name }
         return getTargetMemberProps(targetClass)
-            .filter { it.name in toPropNames }
-            .map {
-                val pfr = propsFr[propMappers[it.name]!!.frName]!!
+            .filter { it.name in propMappers.keys }
+            .mapNotNull {
+                val frPropName = propMappers[it.name]!!.frName
+                val pfr = sourceStruct.get(frPropName) ?: return@mapNotNull null
                 val convNnFn = dataConverters.getConverterNn(pfr.klass, it.klass, it.returnType.isMarkedNullable)
                 PropAutoBind(
                     sourcePropRd = pfr,
@@ -288,6 +269,8 @@ internal object PropAccessUtils {
             get() = returnType.classifier as KClass<*>
 
         abstract fun getValue(pojo: T): Any?
+
+        open fun isFieldOrAccessor() = true // mark, is reader directly from object field or getter
     }
 
     internal class PropertyReaderProp<T>(name: String, internal val prop: KProperty1<T, Any?>) : PropertyReader<T>(name) {

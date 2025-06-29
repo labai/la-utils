@@ -99,7 +99,7 @@ internal class DataConverters(
             }
         }
 
-        throw LaConvertException("Convert case is not defined (targetType=$sourceKlass sourceType=$targetKlass ${errorDetails?.invoke() ?: ""})")
+        throw LaConvertException("Convert case is not defined (sourceType='$sourceKlass' targetType='$targetKlass' ${errorDetails?.invoke() ?: ""})")
     }
 
     private fun wrapNotNullConverter(convFn: ConvFn?, targetKlass: KClass<*>): ConvFn? {

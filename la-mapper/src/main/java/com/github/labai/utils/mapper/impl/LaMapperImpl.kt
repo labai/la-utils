@@ -58,6 +58,7 @@ internal class LaMapperImpl(
     }
     internal val dataConverters = DataConverters(laConverterRegistry, config)
     internal val serviceContext = ServiceContext().apply { this.config = this@LaMapperImpl.config; this.dataConverters = this@LaMapperImpl.dataConverters }
+    internal val structUtils = MappedStructFactory(serviceContext)
     internal val laMapperAsmCompiler2 = LaMapperAsmCompiler2(serviceContext)
     internal val laMapperAsmCompiler3 = LaMapperAsmCompiler3(serviceContext)
 
@@ -79,12 +80,11 @@ internal class LaMapperImpl(
             if (!isInitialized.get()) {
                 synchronized(this) {
                     if (!isInitialized.get()) {
-                        struct = MappedStruct(
+                        struct = structUtils.createMappedStruct(
                             sourceType,
                             targetType,
                             manualMappings.filter { it.value is PropMapping }.mapValues { it.value as PropMapping },
                             manualMappings.filter { it.value is LambdaMapping }.mapValues { it.value as LambdaMapping },
-                            serviceContext,
                             manualMappings.any { it.value is LambdaMapping && (it.value as LambdaMapping<Fr>).isClosure },
                         )
                         activeMapper = ReflectionAutoMapper(struct, serviceContext)
