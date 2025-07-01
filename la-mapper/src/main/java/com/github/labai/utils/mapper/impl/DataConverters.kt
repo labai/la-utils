@@ -74,6 +74,10 @@ internal class DataConverters(
         if (convFn != null)
             return convFn
 
+        // for unknown sources (Map, Builder) use runtime converter
+        if (sourceKlass == Any::class)
+            return runtimeConverter(targetKlass)
+
         if (laMapperConfig.autoConvertValueClass) {
             // for value classes try more combination (value to/from simple)
             val sourceUnwrapped = getCustomUnwrappedTypeOrNull(sourceKlass)
@@ -152,6 +156,17 @@ internal class DataConverters(
         val mainProp = srcKlass.memberProperties.singleOrNull() ?: return null
         val mainConstr = trgKlass.primaryConstructor ?: return null
         return ITypeConverter { convFn.convert(mainProp.get(it as Any))?.let { res -> mainConstr.call(res) } }
+    }
+
+    private fun runtimeConverter(targetKlass: KClass<out Any>): ConvFn {
+        return ConvFn {
+            if (it == null) {
+                convertNull(targetKlass)
+            } else {
+                val conv = laConverterRegistry.getConverter(it::class.java, targetKlass.java)
+                (conv as? ITypeConverter<Any, Any?>)?.convert(it)
+            }
+        }
     }
 
     private fun getCustomUnwrappedTypeOrNull(mainKlass: KClass<*>): KClass<*>? {

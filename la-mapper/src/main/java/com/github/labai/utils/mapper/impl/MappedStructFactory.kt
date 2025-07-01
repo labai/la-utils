@@ -29,6 +29,9 @@ import com.github.labai.utils.mapper.impl.LaMapperImpl.PropMapping
 import com.github.labai.utils.mapper.impl.PropAccessUtils.PropertyReader
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
+import kotlin.reflect.KType
+import kotlin.reflect.full.createType
+import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
 
 /*
@@ -38,7 +41,12 @@ import kotlin.reflect.full.memberProperties
 internal class MappedStructFactory(private val serviceContext: ServiceContext) {
     private val config: LaMapperConfig = serviceContext.config
 
+    //
     // for source as KClass
+    //
+    // if sourceType is Map, then use map values as the source instead of methods or fields
+    //
+    @Suppress("UNCHECKED_CAST")
     internal fun <Fr : Any, To : Any> createMappedStruct(
         sourceType: KClass<Fr>,
         targetType: KClass<To>,
@@ -46,8 +54,16 @@ internal class MappedStructFactory(private val serviceContext: ServiceContext) {
         manualMappers: Map<String, LambdaMapping<Fr>> = mapOf(),
         hasClosure: Boolean = false,
     ): MappedStruct<Fr, To> {
+        val sourceStruct: ISourceStruct<Fr> = if (sourceType.isSubclassOf(Map::class)) {
+            MapSourceStruct(sourceType as KClass<Map<String, Any?>>) as ISourceStruct<Fr>
+        } else {
+            ClassSourceStruct(sourceType)
+        }
+        if (targetType.isSubclassOf(Map::class))
+            error("Mapping to Map is not supported yet")
+
         return MappedStruct(
-            ClassSourceStruct(sourceType),
+            sourceStruct,
             targetType,
             propMappers,
             manualMappers,
@@ -100,5 +116,31 @@ internal class MappedStructFactory(private val serviceContext: ServiceContext) {
         override fun get(name: String?): PropertyReader<Fr>? {
             return if (name == null) null else sourcePropsByName[name]
         }
+    }
+
+    private inner class MapSourceStruct<Fr : Map<String, Any?>>(
+        override val type: KClass<Fr>,
+    ) : ISourceStruct<Fr> {
+        private val readerMap: MutableMap<String, PropertyReader<Fr>> = mutableMapOf()
+        override fun get(name: String?): PropertyReader<Fr>? {
+            if (name == null)
+                return null
+            return readerMap.computeIfAbsent(name) {
+                MapPropertyReader(name)
+            }
+        }
+    }
+
+    private class MapPropertyReader<T : Map<String, Any?>>(name: String) : PropertyReader<T>(name) {
+        override val returnType: KType
+            get() = ANY_KTYPE
+
+        override fun getValue(pojo: T): Any? = pojo[name]
+
+        override fun isFieldOrAccessor() = false
+    }
+
+    companion object {
+        private val ANY_KTYPE = Any::class.createType()
     }
 }

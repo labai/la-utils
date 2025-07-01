@@ -27,6 +27,7 @@ import com.github.labai.utils.convert.LaConverterRegistry;
 import com.github.labai.utils.mapper.LaMapper;
 import com.github.labai.utils.mapper.impl.DataConverters;
 import com.github.labai.utils.mapper.impl.ServiceContext;
+import com.github.labai.utils.targetbuilder.impl.TargetBuilderFactory;
 import com.github.labai.utils.targetbuilder.impl.TargetBuilderStringFactory;
 
 /*
@@ -55,7 +56,13 @@ public class TargetBuilderJ {
     private TargetBuilderJ() {
     }
 
-    // object build from strings (can be used for parsers)
+    // pojo builder for class
+    public static <To> ITargetBuilderFactory<To> forClass(Class<To> targetClass) {
+        var klass = kotlin.jvm.JvmClassMappingKt.getKotlinClass(targetClass);
+        return new TargetBuilderFactory<>(klass, getServiceContext());
+    }
+
+    // pojo builder from strings (can be used for parsers)
     public static <To> ITargetBuilderStringFactory<To> fromStringsSource(Class<To> targetClass) {
         var klass = kotlin.jvm.JvmClassMappingKt.getKotlinClass(targetClass);
         return new TargetBuilderStringFactory<>(klass, getServiceContext());

@@ -46,16 +46,16 @@ import kotlin.reflect.KType
  * 2nd version - partially compile - only access to object properties.
  *
  * - read source pojo values to array (one reader class)
- * - write to target pojo from array (one writer class)
+ * - write to target pojo from an array (one writer class)
  * - reflection for 'value class' type
  * - reflection for manual assigns
  *
  * For compiling use ASM lib.
  *
- * Pros
- *  - mapping performance is few times faster than using reflection
+ * Pros:
+ *  - mapping performance is a few times faster than using reflection
  *
- * Cons
+ * Cons:
  *  - still slower than handwritten assigns
  *
  * Is enabled by default - will be chosen when can't use full-copy generated class (LaMapperAsmCompiler2)
@@ -67,9 +67,9 @@ internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) 
     internal interface Compiled2AutoMapper<Fr : Any, To : Any> : AutoMapper<Fr, To>
 
     internal fun <Fr : Any, To : Any> compiledMapper(struct: MappedStruct<Fr, To>): AutoMapper<Fr, To> {
-        // create on reader object for params
+        // create on a reader object for params
         //
-        val readableParams = struct.paramBinds.filter { it.sourcePropRd != null && isClassSuitableForCompile(it.sourcePropRd.klass) }
+        val readableParams = struct.paramBinds.filter { it.sourcePropRd != null && isSuitableForCompile(it.sourcePropRd) }
         val propsPrmFr: List<NameOrAccessor> = readableParams.map { it.sourcePropRd!!.toNameOrAccessor() }
         val objectCreator: ObjectCreator<Fr, To>
         val multiReaderMainCon: MultiReaderMain<Fr>?
@@ -96,7 +96,7 @@ internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) 
         // ordinary (non-constructor) fields, auto mapped
         //
         val propsAutFr = struct.propAutoBinds
-            .filter { isClassSuitableForCompile(it.sourcePropRd.klass) }
+            .filter { isSuitableForCompile(it.sourcePropRd) }
             .map { it.sourcePropRd.toNameOrAccessor() }
         val propsAutTo = struct.propAutoBinds
             .filter { isClassSuitableForCompile(it.targetPropWr.klass) }
@@ -234,6 +234,14 @@ internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) 
 
     private fun isClassSuitableForCompile(klass: KClass<*>): Boolean {
         if (klass.isValue) // skip value-classes
+            return false
+        return true
+    }
+
+    private fun <Fr : Any> isSuitableForCompile(reader: PropertyReader<Fr>): Boolean {
+        if (!isClassSuitableForCompile(reader.klass))
+            return false
+        if (!reader.isFieldOrAccessor())
             return false
         return true
     }

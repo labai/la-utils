@@ -27,47 +27,43 @@ import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.impl.LaMapperAsmCompiler3
 import com.github.labai.utils.mapper.impl.MappedStructFactory
 import com.github.labai.utils.mapper.impl.ServiceContext
-import com.github.labai.utils.targetbuilder.ITargetBuilderStringFactory
+import com.github.labai.utils.targetbuilder.ITargetBuilderFactory
 import kotlin.reflect.KClass
 
 /*
  * @author Augustus
- * created on 2025-06-28
+ * created on 2025-06-30
  *
- * build a target object from string values
- *
- * similar to TargetBuilderFactory, but limit source data to strings only,
- * it may be useful in parsers,
- * as a source type is known in advance, converters can be chosen in compiler time.
- *
+ * build a target object from any kind of values
+ * (as type is not known, all conversions will be on the fly)
 */
-internal class TargetBuilderStringFactory<To : Any>(
+internal class TargetBuilderFactory<To : Any>(
     targetKlass: KClass<To>,
     serviceContext: ServiceContext,
-) : ITargetBuilderStringFactory<To> {
+) : ITargetBuilderFactory<To> {
 
-    private val matrixArray: Array<String?>
+    private val matrixArray: Array<Any?>
     private val nameIndexResolver: INameIndexResolver
-    private val mapper: AutoMapper<PojoAsArray<String?>, To>
+    private val mapper: AutoMapper<PojoAsArray<Any?>, To>
 
     init {
         val structUtils = MappedStructFactory(serviceContext)
         val laMapperAsmCompiler3 = LaMapperAsmCompiler3(serviceContext)
-        val sourceStruct = StringArraySourceStruct()
+        val sourceStruct = ObjectArraySourceStruct()
         val mStruct = structUtils.createMappedStruct(
             sourceStruct,
             targetKlass,
         )
         mapper = laMapperAsmCompiler3.compiledMapper(mStruct)
         val size = mStruct.paramBinds.size + mStruct.propAutoBinds.size + mStruct.propManualBinds.size
-        matrixArray = arrayOfNulls<String>(size)
+        matrixArray = arrayOfNulls<Any>(size)
         nameIndexResolver = NameIndexResolver(sourceStruct.names())
     }
 
-    inner class Builder : ITargetBuilderStringFactory.IBuilder<To> {
-        private val values: Array<String?> = this@TargetBuilderStringFactory.matrixArray.clone()
+    inner class Builder : ITargetBuilderFactory.IBuilder<To> {
+        private val values: Array<Any?> = this@TargetBuilderFactory.matrixArray.clone()
 
-        override fun add(name: String?, value: String?): Builder {
+        override fun add(name: String?, value: Any?): Builder {
             val idx = nameIndexResolver.getIndex(name)
             if (idx >= 0)
                 values[idx] = value
@@ -79,7 +75,7 @@ internal class TargetBuilderStringFactory<To : Any>(
         }
     }
 
-    override fun instance(): ITargetBuilderStringFactory.IBuilder<To> {
+    override fun instance(): ITargetBuilderFactory.IBuilder<To> {
         return Builder()
     }
 }

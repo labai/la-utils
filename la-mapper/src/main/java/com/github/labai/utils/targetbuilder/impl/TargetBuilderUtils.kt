@@ -43,7 +43,7 @@ internal interface INameIndexResolver {
     fun getIndex(name: String?): Int
 }
 
-internal sealed class PojoAsArraySourceStruct<T : Any>(
+internal open class PojoAsArraySourceStruct<T : Any>(
     private var valueKlass: KClass<T>,
 ) : ISourceStruct<PojoAsArray<T?>> {
     private var idx: Int = 0
@@ -76,6 +76,8 @@ internal sealed class PojoAsArraySourceStruct<T : Any>(
 }
 
 internal class StringArraySourceStruct : PojoAsArraySourceStruct<String>(String::class)
+
+internal class ObjectArraySourceStruct : PojoAsArraySourceStruct<Any>(Any::class)
 
 internal class NameIndexResolver(names: List<String>) : INameIndexResolver {
     private val indexes = HashMap<String, Int>((names.size * 1.5).toInt())

@@ -339,6 +339,33 @@ class LaMapperTest {
         assertEquals(4, res.v01)
     }
 
+    @ParameterizedTest
+    @MethodSource(MappersConfig.ENGINES)
+    fun test13_hashMap_var(engine: String) {
+        // test_1 (data struct)
+        val mapper1 = MappersConfig.getMapper<Map<String, Any?>, To01>(engine)
+        val from1 = mutableMapOf<String, Any?>("v1" to 5, "v2" to "6.5", "v=3" to "foo")
+        val res1 = mapper1.transform(from1)
+
+        assertEqBigDecimal("5", res1.v1)
+        assertEqBigDecimal("6.5", res1.v2)
+        assertEquals("foo", res1.`v=3`)
+
+        // test_2 (pojo)
+        val mapper2 = MappersConfig.getMapper<Map<String, Any?>, To02>(engine)
+        val from2 = mutableMapOf<String, Any?>("a20" to 7, "a30" to LocalDate.parse("2022-11-08"))
+        val res2 = mapper2.transform(from2)
+
+        assertEquals(7L, res2.a20)
+        assertEquals(LocalDateTime.parse("2022-11-08T00:00:00"), res2.a30)
+
+        // test_3 (record)
+        val mapper3 = MappersConfig.getMapper<Map<*, *>, Dto12>(engine)
+        val from3 = mutableMapOf<String, Any?>("v01" to 5)
+        val res3 = mapper3.transform(from3)
+        assertEquals(5, res3.v01)
+    }
+
     private fun assertEqBigDecimal(expectedAsStr: String, value: BigDecimal) {
         assertTrue(value.compareTo(BigDecimal(expectedAsStr)) == 0, "Expected '$expectedAsStr', got '$value'")
     }

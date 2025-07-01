@@ -20,13 +20,13 @@ import org.junit.jupiter.api.fail
 class SynthConTest {
     private val laMapperAsmCompiler: LaMapperAsmCompiler3
     private val serviceContext: ServiceContext
-    private val structUtils: MappedStructFactory
+    private val structFactory: MappedStructFactory
 
     init {
         val config = LaMapperConfig()
         val dataConverters = DataConverters(LaConverterRegistry.global, config)
         serviceContext = ServiceContext().apply { this.config = config; this.dataConverters = dataConverters }
-        structUtils = MappedStructFactory(serviceContext)
+        structFactory = MappedStructFactory(serviceContext)
         laMapperAsmCompiler = LaMapperAsmCompiler3(serviceContext)
     }
 
@@ -45,7 +45,7 @@ class SynthConTest {
 
     @Test
     internal fun test_flagparam_when_dont_exist_should_be_1() {
-        val struct = structUtils.createMappedStruct(Pojo1::class, Pojo3::class)
+        val struct = structFactory.createMappedStruct(Pojo1::class, Pojo3::class)
 
         val synthConConf = SynthConstructorUtils.prepareSynthConParams(struct.targetType, struct.paramBinds)
             ?: fail("can prepare synth constructor call")
@@ -56,7 +56,7 @@ class SynthConTest {
 
     @Test
     internal fun test_flagparam_when_exists_should_be_0() {
-        val struct = structUtils.createMappedStruct(Pojo2::class, Pojo3::class)
+        val struct = structFactory.createMappedStruct(Pojo2::class, Pojo3::class)
 
         val synthConConf = SynthConstructorUtils.prepareSynthConParams(struct.targetType, struct.paramBinds)
             ?: fail("can prepare synth constructor call")
@@ -73,7 +73,7 @@ class SynthConTest {
     @Test
     internal fun test_fail_if_no_source_and_mandatory() {
         try {
-            structUtils.createMappedStruct(Pojo1::class, Pojo4::class)
+            structFactory.createMappedStruct(Pojo1::class, Pojo4::class)
             fail { "expected exception" }
         } catch (e: IllegalArgumentException) {
             // ok
@@ -87,7 +87,7 @@ class SynthConTest {
 
     @Test
     internal fun test_flagparam_when_exists_should_be_1_2nd_param() {
-        val struct = structUtils.createMappedStruct(Pojo2::class, Pojo5::class)
+        val struct = structFactory.createMappedStruct(Pojo2::class, Pojo5::class)
 
         val synthConConf = SynthConstructorUtils.prepareSynthConParams(struct.targetType, struct.paramBinds)
             ?: fail("can prepare synth constructor call")
@@ -98,7 +98,7 @@ class SynthConTest {
 
     @Test
     internal fun test_flagparam_when_exists_should_be_1_32nd_param() {
-        val struct = structUtils.createMappedStruct(Pojo2::class, PojoF32::class)
+        val struct = structFactory.createMappedStruct(Pojo2::class, PojoF32::class)
 
         val synthConConf = SynthConstructorUtils.prepareSynthConParams(struct.targetType, struct.paramBinds)
             ?: fail("can prepare synth constructor call")
@@ -114,7 +114,7 @@ class SynthConTest {
 
     @Test
     internal fun test_flagparam_when_exists_should_be_1_33nd_param() {
-        val struct = structUtils.createMappedStruct(Pojo2::class, PojoF33::class)
+        val struct = structFactory.createMappedStruct(Pojo2::class, PojoF33::class)
 
         val synthConConf = SynthConstructorUtils.prepareSynthConParams(struct.targetType, struct.paramBinds)
             ?: fail("can prepare synth constructor call")

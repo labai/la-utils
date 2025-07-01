@@ -5,6 +5,7 @@ import com.github.labai.utils.mapper.LaMapper
 import com.github.labai.utils.mapper.impl.DataConverters
 import com.github.labai.utils.mapper.impl.ServiceContext
 import com.github.labai.utils.targetbuilder.TargetBuilderJ
+import com.github.labai.utils.targetbuilder.impl.TargetBuilderFactory
 import com.github.labai.utils.targetbuilder.impl.TargetBuilderStringFactory
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -33,6 +34,23 @@ class TargetBuilderTest {
     }
 
     @Test
+    fun test_builder_simple() {
+        val factory = TargetBuilderJ.forClass(Pojo1::class.java)
+        val pojo: Pojo1 = factory.instance()
+            .add("name", "Vardas")
+            .add("age", 18)
+            .add("address", "Vilnius")
+            .add("a00", "a00")
+            .build()
+
+        assertEquals("Vardas", pojo.name)
+        assertEquals(18, pojo.age)
+        assertEquals("Vilnius", pojo.address)
+        assertEquals("x0", pojo.a00) // ignored update, as readonly (val)
+        assertEquals("", pojo.a01) // empty, as not null (Q: is ok, if overwrites default?)
+    }
+
+    @Test
     fun test_builder_from_strings_simple() {
         val factory = TargetBuilderJ.fromStringsSource(Pojo1::class.java)
         val pojo: Pojo1 = factory.instance()
@@ -56,7 +74,19 @@ class TargetBuilderTest {
     )
 
     @Test
-    fun test_builder_from_strings_records() {
+    fun test_builder_record() {
+        val factory = TargetBuilderFactory(Pojo2Record::class, serviceContext)
+        val pojo: Pojo2Record = factory.instance()
+            .add("name", "Vardas")
+            .add("age", 18)
+            .build()
+
+        assertEquals("Vardas", pojo.name)
+        assertEquals(18, pojo.age)
+    }
+
+    @Test
+    fun test_builder_from_strings_record() {
         val factory = TargetBuilderStringFactory(Pojo2Record::class, serviceContext)
         val pojo: Pojo2Record = factory.instance()
             .add("name", "Vardas")
