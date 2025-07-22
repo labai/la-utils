@@ -53,7 +53,7 @@ public class LaPojo {
         if (object == null) throw new NullPointerException();
         Map<String, Field> fieldMap = targetFieldMapCache.get(object.getClass());
         if (fieldMap == null) {
-            fieldMap = LaReflect.analyzeFields(object);
+            fieldMap = LaReflect.analyzeObjFields(object);
             synchronized (targetFieldMapCache) {
                 targetFieldMapCache.put(object.getClass(), fieldMap);
             }

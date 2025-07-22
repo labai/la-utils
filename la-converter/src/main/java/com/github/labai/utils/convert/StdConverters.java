@@ -20,6 +20,7 @@ import java.util.Date;
  * common converters
  */
 class StdConverters {
+    private static final ConvDate convDate = LaConvDt.convDate;
 
     @SuppressWarnings({"rawtypes"})
     static <Fr, To> ITypeConverter chooseStdConverter(Class<Fr> sourceType, Class<To> targetType) {
@@ -57,13 +58,13 @@ class StdConverters {
             return DateConverters.converterToInstant(sourceType);
         if (targetType == java.sql.Date.class) {
             return value -> {
-                Date date = ConvDate.convToDate(value);
+                Date date = convDate.convToDate(value);
                 return (date == null) ? null : new java.sql.Date(date.getTime());
             };
         }
         if (targetType == Timestamp.class) {
             return value -> {
-                Instant instant = ConvDate.convToInstant(value);
+                Instant instant = convDate.convToInstant(value);
                 return (instant == null) ? null : Timestamp.from(instant);
             };
         }
@@ -342,7 +343,7 @@ class StdConverters {
             if (fromClass == java.sql.Date.class)
                 return value -> value == null ? null : Instant.ofEpochMilli(((java.sql.Date) value).getTime()).atZone(ZoneId.systemDefault()).toLocalDate();
             if (Date.class.isAssignableFrom(fromClass))
-                return value -> value == null ? null : ConvDate.dateToInstant((Date) value).atZone(ZoneId.systemDefault()).toLocalDate();
+                return value -> value == null ? null : convDate.dateToInstant((Date) value).atZone(ZoneId.systemDefault()).toLocalDate();
             return null;
         }
 
@@ -358,14 +359,14 @@ class StdConverters {
             if (fromClass == Instant.class)
                 return value -> value == null ? null : ((Instant) value).atZone(ZoneId.systemDefault()).toLocalDateTime();
             if (Date.class.isAssignableFrom(fromClass))
-                return value -> value == null ? null : ConvDate.dateToInstant((Date) value).atZone(ZoneId.systemDefault()).toLocalDateTime();
+                return value -> value == null ? null : convDate.dateToInstant((Date) value).atZone(ZoneId.systemDefault()).toLocalDateTime();
             return null;
         }
 
         static <T> ITypeConverter<T, OffsetDateTime> converterToOffsetDateTime(Class<T> fromClass) {
             if (fromClass == OffsetDateTime.class)
                 return value -> (OffsetDateTime) value;
-            return value -> value == null ? null : ConvDate.convToZonedDateTime(value).toOffsetDateTime();
+            return value -> value == null ? null : convDate.convToZonedDateTime(value).toOffsetDateTime();
         }
 
         static <T> ITypeConverter<T, ZonedDateTime> converterToZonedDateTime(Class<T> fromClass) {
@@ -380,7 +381,7 @@ class StdConverters {
             if (fromClass == Instant.class)
                 return value -> value == null ? null : ((Instant) value).atZone(ZoneId.systemDefault());
             if (Date.class.isAssignableFrom(fromClass))
-                return value -> value == null ? null : ConvDate.dateToInstant((Date) value).atZone(ZoneId.systemDefault());
+                return value -> value == null ? null : convDate.dateToLocalDateTime((Date) value).atZone(ZoneId.systemDefault());
             return null;
         }
 
@@ -388,11 +389,11 @@ class StdConverters {
             if (fromClass == Instant.class)
                 return value -> (Instant) value;
             if (Date.class.isAssignableFrom(fromClass))
-                return value -> value == null ? null : ConvDate.dateToInstant((Date) value);
+                return value -> value == null ? null : convDate.dateToInstant((Date) value);
             return value -> {
                 if (value == null)
                     return null;
-                ZonedDateTime zdtm = ConvDate.convToZonedDateTime(value);
+                ZonedDateTime zdtm = convDate.convToZonedDateTime(value);
                 if (zdtm == null)
                     return null;
                 return zdtm.toInstant();
@@ -405,7 +406,7 @@ class StdConverters {
             return value -> {
                 if (value == null)
                     return null;
-                Instant instant = ConvDate.convToInstant(value);
+                Instant instant = convDate.convToInstant(value);
                 if (instant == null)
                     return null;
                 return Date.from(instant);

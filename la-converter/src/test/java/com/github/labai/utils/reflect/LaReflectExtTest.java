@@ -24,7 +24,7 @@ public class LaReflectExtTest {
         }
 
         Pojo pojo = new Pojo();
-        Map<String, Field> fields = LaReflect.analyzeFields(pojo);
+        Map<String, Field> fields = LaReflect.analyzeObjFields(pojo);
         LaReflect.assignValue(pojo, fields.get("deci"), new BigDecimal("4.4"));
         LaReflect.assignValue(pojo, fields.get("bigd"), new Deci("5.5"));
 

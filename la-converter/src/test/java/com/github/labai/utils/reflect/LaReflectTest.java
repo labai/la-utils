@@ -35,7 +35,7 @@ public class LaReflectTest {
             private long long2 = 22;
         }
         Pojo pojo = new Pojo();
-        Map<String, Field> fields = LaReflect.analyzeFields(pojo);
+        Map<String, Field> fields = LaReflect.analyzeObjFields(pojo);
         LaReflect.assignValue(pojo, fields.get("int1"), 11);
         LaReflect.assignValue(pojo, fields.get("int2"), 11);
         LaReflect.assignValue(pojo, fields.get("long1"), 11);
@@ -56,7 +56,7 @@ public class LaReflectTest {
             long long2 = 22;
         }
         Pojo pojo = new Pojo();
-        Map<String, Field> fields = LaReflect.analyzeFields(pojo);
+        Map<String, Field> fields = LaReflect.analyzeObjFields(pojo);
         LaReflect.assignValue(pojo, fields.get("int1"), null);
         LaReflect.assignValue(pojo, fields.get("int2"), null);
         LaReflect.assignValue(pojo, fields.get("long1"), null);
@@ -74,7 +74,7 @@ public class LaReflectTest {
             boolean bool2 = false;
         }
         Pojo pojo = new Pojo();
-        Map<String, Field> fields = LaReflect.analyzeFields(pojo);
+        Map<String, Field> fields = LaReflect.analyzeObjFields(pojo);
         LaReflect.assignValue(pojo, fields.get("bool1"), true);
         LaReflect.assignValue(pojo, fields.get("bool2"), true);
         assertEquals(true, pojo.bool1);
@@ -93,7 +93,7 @@ public class LaReflectTest {
             Enum1 enum12 = null;
         }
         Pojo pojo = new Pojo();
-        Map<String, Field> fields = LaReflect.analyzeFields(pojo);
+        Map<String, Field> fields = LaReflect.analyzeObjFields(pojo);
         LaReflect.assignValue(pojo, fields.get("enum11"), Enum1.ABRA);
         LaReflect.assignValue(pojo, fields.get("enum12"), "KADABRA");
         assertEquals(Enum1.ABRA, pojo.enum11);
@@ -124,7 +124,7 @@ public class LaReflectTest {
 
             void checkDateAssign(Object val_20181108_111213) {
                 Pojo pojo = new Pojo();
-                Map<String, Field> fields = LaReflect.analyzeFields(pojo);
+                Map<String, Field> fields = LaReflect.analyzeObjFields(pojo);
                 LaReflect.assignValue(pojo, fields.get("date1"), val_20181108_111213);
                 LaReflect.assignValue(pojo, fields.get("sqlDate1"), val_20181108_111213);
                 LaReflect.assignValue(pojo, fields.get("timestamp1"), val_20181108_111213);
@@ -183,7 +183,7 @@ public class LaReflectTest {
     @Test
     public void testAnalyzeFields() throws IllegalAccessException {
         Main1 obj = new Main1();
-        Map<String, Field> fmap = LaReflect.analyzeFields(obj);
+        Map<String, Field> fmap = LaReflect.analyzeObjFields(obj);
 
         // will be taken a) all field from Main object, b) public - from Super
         assertEquals(new HashSet<>(asList("s4", "s5")), fmap.keySet()); // TODO ? to use field from super class?
@@ -191,7 +191,7 @@ public class LaReflectTest {
         assertEquals("s4_main", fmap.get("s4").get(obj));
 
         Super1 sup = new Super1();
-        Map<String, Field> fmapSup = LaReflect.analyzeFields(sup);
+        Map<String, Field> fmapSup = LaReflect.analyzeObjFields(sup);
         assertEquals(new HashSet<>(asList("s1", "s2", "s3", "s4")), fmapSup.keySet());
         assertEquals("s4_super", fmapSup.get("s4").get(obj));
     }

@@ -1,6 +1,7 @@
 package com.github.labai.utils.convert;
 
 import com.github.labai.utils.convert.LaConvUtils.ClassPairMap;
+import com.github.labai.utils.convert.ext.DateIsoStringConverters;
 import com.github.labai.utils.convert.ext.DeciConverters;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -21,13 +22,15 @@ import java.util.Set;
  */
 public class LaConverterRegistry implements IConverterResolver {
 
-    // global instance, can be used statically
+    // global instance, it can be used statically
     public final static IConverterResolver global = new LaConverterRegistry();
 
     static {
         // additional known types:
         // Deci
         DeciConverters.registryDeciConverters((LaConverterRegistry) global);
+        // IsoStringToDate
+        DateIsoStringConverters.registryDateStringConverters((LaConverterRegistry) global);
     }
 
     private final Set<IConverterResolver> extResolvers = new LinkedHashSet<>();

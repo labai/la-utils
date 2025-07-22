@@ -56,7 +56,8 @@ public class LaConvTypeTest {
         Instant.class,
         java.sql.Date.class,
         Timestamp.class,
-        Date.class
+        Date.class,
+        String.class
     );
 
     private static final List<Class> miscClasses = Arrays.asList(
@@ -283,5 +284,4 @@ public class LaConvTypeTest {
         String msg = "failed conv " + boolValue.getClass() + " to " + expectedTarget.getClass();
         assertEquals(expectedTarget, converted, msg);
     }
-
 }

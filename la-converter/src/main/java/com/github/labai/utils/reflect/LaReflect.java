@@ -67,7 +67,7 @@ public class LaReflect {
      * field from super class will not be accessed (TODO?).
      */
     static void copyFields(Object source, Object target) {
-        Map<String, Field> targetFieldMap = analyzeFields(target);
+        Map<String, Field> targetFieldMap = analyzeObjFields(target);
         copyFields(source, target, targetFieldMap);
     }
 
@@ -93,10 +93,15 @@ public class LaReflect {
     // private
     //
 
-    static Map<String, Field> analyzeFields(Object object) {
-        if (object == null) throw new NullPointerException();
+    static Map<String, Field> analyzeObjFields(Object object) {
+        if (object == null)
+            throw new NullPointerException();
+        return analyzeFields(object.getClass());
+    }
+
+    static Map<String, Field> analyzeFields(Class<?> clazz) {
         Map<String, Field> map = new LinkedHashMap<>();
-        for (Field field : object.getClass().getDeclaredFields()) {
+        for (Field field : clazz.getDeclaredFields()) {
             field.setAccessible(true);
             if (Modifier.isStatic(field.getModifiers())) continue;
             map.put(field.getName(), field);
