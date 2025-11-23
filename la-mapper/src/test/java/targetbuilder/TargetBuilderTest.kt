@@ -25,12 +25,13 @@ class TargetBuilderTest {
 
     class Pojo1(
         var name: String,
-        var age: Int = 5,
+        var age: Long = 5,
     ) {
         var address: String? = null
         val a00: String? = "x0"
         var a01: String = "x1"
         var a02: String? = null
+        // var ldt: LocalDate? = null
     }
 
     @Test
@@ -41,6 +42,7 @@ class TargetBuilderTest {
             .add("age", 18)
             .add("address", "Vilnius")
             .add("a00", "a00")
+            // .add("ldt", LocalDateTime.parse("2025-11-08T12:13:14"))
             .build()
 
         assertEquals("Vardas", pojo.name)
@@ -48,6 +50,7 @@ class TargetBuilderTest {
         assertEquals("Vilnius", pojo.address)
         assertEquals("x0", pojo.a00) // ignored update, as readonly (val)
         assertEquals("", pojo.a01) // empty, as not null (Q: is ok, if overwrites default?)
+        // assertEquals("2025-11-08", pojo.ldt.toString())
     }
 
     @Test
@@ -58,6 +61,7 @@ class TargetBuilderTest {
             .add("age", "18")
             .add("address", "Vilnius")
             .add("a00", "a00")
+            // .add("ldt", "2025-11-08T12:13:14") // todo
             .build()
 
         assertEquals("Vardas", pojo.name)
@@ -65,6 +69,7 @@ class TargetBuilderTest {
         assertEquals("Vilnius", pojo.address)
         assertEquals("x0", pojo.a00) // ignored update, as readonly (val)
         assertEquals("", pojo.a01) // empty, as not null (Q: is ok, if overwrites default?)
+        // assertEquals("2025-11-08", pojo.ldt.toString())
     }
 
     @JvmRecord

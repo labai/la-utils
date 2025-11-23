@@ -27,6 +27,7 @@ import com.github.labai.utils.convert.IConverterResolver
 import com.github.labai.utils.convert.LaConverterRegistry
 import com.github.labai.utils.mapper.impl.ClassTrioMap
 import com.github.labai.utils.mapper.impl.ClosureUtils
+import com.github.labai.utils.mapper.impl.IAutoMapping
 import com.github.labai.utils.mapper.impl.LaMapperImpl
 import com.github.labai.utils.mapper.impl.LaMapperImpl.AutoMapperImpl
 import com.github.labai.utils.mapper.impl.LaMapperImpl.IMappingBuilderItem
@@ -95,6 +96,14 @@ class LaMapper(
             return global.copyFrom(from, Fr::class, To::class, mapping)
         }
 
+        inline fun <reified Fr : Any, reified To : Any> copyFields(
+            from: Fr,
+            to: To,
+            noinline mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
+        ) {
+            return global.copyFields(from, to, Fr::class, To::class, mapping)
+        }
+
         inline fun <reified Fr : Any, reified To : Any> autoMapper(
             noinline mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
         ): AutoMapper<Fr, To> {
@@ -130,24 +139,7 @@ class LaMapper(
         targetType: KClass<To>,
         mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
     ): To {
-        var isCached = true
-
-        @Suppress("UNCHECKED_CAST")
-        val mapper = cache.getOrPut(sourceType, targetType, if (mapping == null) null else mapping::class) {
-            isCached = false
-            autoMapper(sourceType, targetType, mapping)
-        } as AutoMapperImpl<Fr, To>
-
-        if (isCached && mapper.hasClosure()) { // ignore cache if there are closures
-            val builder = MappingBuilder<Fr, To>()
-            if (mapping != null) {
-                builder.mapping()
-                builder.map
-            }
-            val mapper2 = ClosureUtils.withOverrides(mapper, builder.map, laMapperImpl.serviceContext)
-            return mapper2.transform(from)
-        }
-
+        val mapper = getCachedMapper(sourceType, targetType, false, mapping)
         return mapper.transform(from)
     }
 
@@ -156,17 +148,51 @@ class LaMapper(
         targetType: KClass<To>,
         mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
     ): AutoMapper<Fr, To> {
+        return createAutoMapper(sourceType, targetType, false, mapping)
+    }
+
+    //
+    // copy fields on an existing object (target)
+    //
+    fun <Fr : Any, To : Any> copyFields(
+        from: Fr,
+        to: To,
+        sourceType: KClass<Fr>,
+        targetType: KClass<To>,
+        mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
+    ) {
+        val mapper = getCachedMapper(sourceType, targetType, true, mapping)
+        mapper.copyFields(from, to)
+    }
+
+    inline fun <reified Fr : Any, reified To : Any> copyFields(
+        from: Fr,
+        to: To,
+        noinline mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
+    ) {
+        return copyFields(from, to, Fr::class, To::class, mapping)
+    }
+
+    internal fun <Fr : Any, To : Any> createAutoMapper(
+        sourceType: KClass<Fr>,
+        targetType: KClass<To>,
+        onExistingTargetOnly: Boolean = false, // flag to skip target constructor analysis
+        mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
+    ): IAutoMapping<Fr, To> {
         return if (mapping != null) {
             val builder = MappingBuilder<Fr, To>()
             builder.mapping()
             if (builder.hasClosure && laMapperImpl.serviceContext.config.disableClosureLambdas)
                 throw IllegalArgumentException("Mapping lambda contains closures (access objects out of lambda) but closures are disabled in LaMapper config")
-            laMapperImpl.AutoMapperImpl(sourceType, targetType, builder.map)
+            laMapperImpl.AutoMapperImpl(sourceType, targetType, builder.map, builder.excluded, onExistingTargetOnly)
         } else {
-            laMapperImpl.AutoMapperImpl(sourceType, targetType, emptyMap())
+            laMapperImpl.AutoMapperImpl(sourceType, targetType, emptyMap(), setOf(), onExistingTargetOnly)
         }
     }
 
+    //
+    // for Java
+    //
     @JvmName("copyFromJ")
     internal fun <Fr : Any, To : Any> copyFromJ(
         from: Fr,
@@ -229,6 +255,30 @@ class LaMapper(
         return Pair(map, hasClosure)
     }
 
+    private fun <Fr : Any, To : Any> getCachedMapper(
+        sourceType: KClass<Fr>,
+        targetType: KClass<To>,
+        onExistingTargetOnly: Boolean = false,
+        mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
+    ): IAutoMapping<Fr, To> {
+        var isCached = true
+
+        @Suppress("UNCHECKED_CAST")
+        val mapper = cache.getOrPut(sourceType, targetType, if (mapping == null) null else mapping::class) {
+            isCached = false
+            createAutoMapper(sourceType, targetType, onExistingTargetOnly, mapping)
+        } as AutoMapperImpl<Fr, To>
+
+        if (isCached && mapper.hasClosure()) { // ignore cache if there are closures
+            val builder = MappingBuilder<Fr, To>()
+            if (mapping != null) {
+                builder.mapping()
+            }
+            return ClosureUtils.withOverrides(mapper, builder.map, laMapperImpl.serviceContext)
+        }
+        return mapper
+    }
+
     open class MappingBuilder<Fr : Any, To> {
         internal val map: MutableMap<String, IMappingBuilderItem<Fr>> = mutableMapOf()
         internal var hasClosure: Boolean = false
@@ -239,6 +289,15 @@ class LaMapper(
 
         /** "to" class instance - dummy object for shorter access to field. DO NOT use it as object, only as reference to field */
         val t: To = dummy()
+
+        internal val excluded: MutableSet<String> = mutableSetOf()
+
+        fun <F> exclude(vararg targetRefs: KCallable<F>?) {
+            for (field in targetRefs) {
+                val toName = field?.name ?: error("mapper exclude param is null")
+                excluded.add(toName)
+            }
+        }
 
         // ------- <t> from <f> combinations ------------------
 

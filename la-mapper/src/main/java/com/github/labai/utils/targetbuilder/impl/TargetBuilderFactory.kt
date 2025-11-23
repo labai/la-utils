@@ -42,9 +42,9 @@ internal class TargetBuilderFactory<To : Any>(
     serviceContext: ServiceContext,
 ) : ITargetBuilderFactory<To> {
 
-    private val matrixArray: Array<Any?>
     private val nameIndexResolver: INameIndexResolver
     private val mapper: AutoMapper<PojoAsArray<Any?>, To>
+    private val arraySize: Int
 
     init {
         val structUtils = MappedStructFactory(serviceContext)
@@ -55,13 +55,12 @@ internal class TargetBuilderFactory<To : Any>(
             targetKlass,
         )
         mapper = laMapperAsmCompiler3.compiledMapper(mStruct)
-        val size = mStruct.paramBinds.size + mStruct.propAutoBinds.size + mStruct.propManualBinds.size
-        matrixArray = arrayOfNulls<Any>(size)
+        arraySize = mStruct.paramBinds.size + mStruct.propAutoBinds.size + mStruct.propManualBinds.size
         nameIndexResolver = NameIndexResolver(sourceStruct.names())
     }
 
     inner class Builder : ITargetBuilderFactory.IBuilder<To> {
-        private val values: Array<Any?> = this@TargetBuilderFactory.matrixArray.clone()
+        private val values: Array<Any?> = arrayOfNulls(arraySize)
 
         override fun add(name: String?, value: Any?): Builder {
             val idx = nameIndexResolver.getIndex(name)

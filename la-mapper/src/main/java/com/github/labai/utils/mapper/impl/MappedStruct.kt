@@ -76,6 +76,8 @@ internal class MappedStruct<Fr : Any, To : Any>(
     private val manualMappers: Map<String, LambdaMapping<Fr>>,
     serviceContext: ServiceContext,
     internal val hasClosure: Boolean = false,
+    excludeFields: Set<String> = setOf(),
+    skipObjectCreation: Boolean = false, // do not try to create object (only for copyFields)
 ) : IMappedStruct<Fr, To> {
     override val targetConstructor: KFunction<To>?
     override val paramBinds: Array<ParamBind<Fr>>
@@ -87,8 +89,9 @@ internal class MappedStruct<Fr : Any, To : Any>(
     private val config: LaMapperConfig = serviceContext.config
 
     init {
-
-        targetConstructor = if (targetType.java.isRecord) {
+        targetConstructor = if (skipObjectCreation) {
+            null
+        } else if (targetType.java.isRecord) {
             RecordKConstructor.forRecordOrNull(targetType.java)
             // primaryConstructor may cause an exception with record and primitives (KT-58649)
         } else {
@@ -102,7 +105,8 @@ internal class MappedStruct<Fr : Any, To : Any>(
             ?.toTypedArray()
             ?: arrayOf() // may be null for Java classes - then will use no-arg constructor
 
-        val autoProp = initPropAutoMappers(sourceStruct, targetType, skip = manualMappers.keys + propMappers.keys + targetArgsMandatory.mapNotNull { it.name })
+        val skipAutoFields = excludeFields + manualMappers.keys + propMappers.keys + targetArgsMandatory.mapNotNull { it.name }
+        val autoProp = initPropAutoMappers(sourceStruct, targetType, skipAutoFields)
         val manProp = initPropManualMappers(sourceStruct, targetType, propMappers)
         propAutoBinds = (autoProp + manProp).toTypedArray()
 
@@ -113,25 +117,29 @@ internal class MappedStruct<Fr : Any, To : Any>(
 
         initManualMapperDataConverters(targetFieldMap, dataConverters)
 
-        paramBinds = targetArgsMandatory.mapNotNull { param ->
-            val manMapper = manualMappers[param.name]
-            if (manMapper != null) {
-                ParamBind(param, manMapper, null, manMapper.convNnFn, dataConverters)
-            } else {
-                val frName = propMappers[param.name]?.frName ?: param.name
-                val prop = sourceStruct.get(frName)
-                if (prop == null && !param.isOptional)
-                    throw IllegalArgumentException("Parameter '${param.name}' is missing")
-                if (prop == null) {
-                    null
+        if (!skipObjectCreation) {
+            paramBinds = targetArgsMandatory.mapNotNull { param ->
+                val manMapper = manualMappers[param.name]
+                if (manMapper != null) {
+                    ParamBind(param, manMapper, null, manMapper.convNnFn, dataConverters)
                 } else {
-                    val sourceKlass: KClass<*> = prop.klass
-                    val targetKlass: KClass<*> = param.type.classifier as KClass<*>
-                    val convFn = dataConverters.getConverterNn(sourceKlass, targetKlass, param.type.isMarkedNullable) { "sourceField=${prop.name} param=${param.name}" }
-                    ParamBind(param, null, prop, convFn, dataConverters)
+                    val frName = propMappers[param.name]?.frName ?: param.name
+                    val prop = sourceStruct.get(frName)
+                    if (prop == null && !param.isOptional)
+                        throw IllegalArgumentException("Parameter '${param.name}' is missing")
+                    if (prop == null) {
+                        null
+                    } else {
+                        val sourceKlass: KClass<*> = prop.klass
+                        val targetKlass: KClass<*> = param.type.classifier as KClass<*>
+                        val convFn = dataConverters.getConverterNn(sourceKlass, targetKlass, param.type.isMarkedNullable) { "sourceField=${prop.name} param=${param.name}" }
+                        ParamBind(param, null, prop, convFn, dataConverters)
+                    }
                 }
-            }
-        }.toTypedArray()
+            }.toTypedArray()
+        } else {
+            paramBinds = arrayOf()
+        }
 
         areAllParams = targetConstructor != null && paramBinds.size == targetConstructor.parameters.size
     }

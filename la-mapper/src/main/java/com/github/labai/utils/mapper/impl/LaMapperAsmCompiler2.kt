@@ -27,7 +27,6 @@ import com.github.labai.utils.hardreflect.LaHardReflect
 import com.github.labai.utils.hardreflect.LaHardReflect.NameOrAccessor
 import com.github.labai.utils.hardreflect.PropMultiReader
 import com.github.labai.utils.hardreflect.PropMultiWriter
-import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.impl.MappedStruct.ParamBind
 import com.github.labai.utils.mapper.impl.MappedStruct.PropAutoBind
 import com.github.labai.utils.mapper.impl.MappedStruct.PropManualBind
@@ -64,9 +63,9 @@ import kotlin.reflect.KType
 */
 internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) {
 
-    internal interface Compiled2AutoMapper<Fr : Any, To : Any> : AutoMapper<Fr, To>
+    internal interface Compiled2AutoMapper<Fr : Any, To : Any> : IAutoMapping<Fr, To>
 
-    internal fun <Fr : Any, To : Any> compiledMapper(struct: MappedStruct<Fr, To>): AutoMapper<Fr, To> {
+    internal fun <Fr : Any, To : Any> compiledMapper(struct: MappedStruct<Fr, To>): IAutoMapping<Fr, To> {
         // create on a reader object for params
         //
         val readableParams = struct.paramBinds.filter { it.sourcePropRd != null && isSuitableForCompile(it.sourcePropRd) }
@@ -148,13 +147,23 @@ internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) 
         return object : Compiled2AutoMapper<Fr, To> {
             override fun transform(from: Fr): To {
                 multiReaderMainCon?.readValues(from)
-
                 val target: To = objectCreator.createObject(from)
+                processAutoFields(from, target)
+                processManualFields(from, target)
+                return target
+            }
 
-                // ordinary (non-constructor) fields, auto mapped
+            override fun copyFields(from: Fr, to: To) {
+                multiReaderMainCon?.readValues(from)
+                processAutoFields(from, to)
+                processManualFields(from, to)
+            }
+
+            // ordinary (non-constructor) fields, auto mapped
+            private fun processAutoFields(from: Fr, target: To) {
                 multiReaderMainAut?.readValues(from)
                 var i = -1
-                var size = compiledPropAutoBinds.size
+                val size = compiledPropAutoBinds.size
                 while (++i < size) {
                     val propMapper = compiledPropAutoBinds[i]
                     val valTo = propMapper.sourcePropRd.getValue(from)
@@ -162,19 +171,19 @@ internal class LaMapperAsmCompiler2(private val serviceContext: ServiceContext) 
                     propMapper.targetPropWr.setValue(target, valConv)
                 }
                 multiWriterMainAut?.writeValues(target)
+            }
 
-                // ordinary (non-constructor) fields, manually mapped
-                i = -1
-                size = compiledPropManualBinds.size
+            // ordinary (non-constructor) fields, manually mapped
+            private fun processManualFields(from: Fr, to: To) {
+                var i = -1
+                val size = compiledPropManualBinds.size
                 while (++i < size) {
                     val mapr = compiledPropManualBinds[i]
                     val valTo = mapr.lambdaMapping.mapper(from)
                     val valConv = mapr.lambdaMapping.convNnFn.convertValNn(valTo)
-                    mapr.targetPropWr.setValue(target, valConv)
+                    mapr.targetPropWr.setValue(to, valConv)
                 }
-                multiWriterMainMan?.writeValues(target)
-
-                return target
+                multiWriterMainMan?.writeValues(to)
             }
         }
     }

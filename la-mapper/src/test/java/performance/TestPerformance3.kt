@@ -13,7 +13,8 @@ import performance.PerfHelper.runMapper
  * @author Augustus
  * created on 2025-04-20
  *
- * test for closures
+ * Closures
+ *
  * - 988 ms - lambda w/o closure (but no compile)
  * - 3032 ms - lambda with closures
  * - 20605 ms - if to create new automapper each time

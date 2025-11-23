@@ -23,7 +23,6 @@ SOFTWARE.
 */
 package com.github.labai.utils.mapper.impl
 
-import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.LaMapper
 import com.github.labai.utils.mapper.LaMapper.LaMapperConfig
 import com.github.labai.utils.mapper.impl.MappedStruct.ParamBind
@@ -48,32 +47,43 @@ import kotlin.reflect.full.createInstance
 internal class ReflectionAutoMapper<Fr : Any, To : Any>(
     private val struct: IMappedStruct<Fr, To>,
     serviceContext: ServiceContext,
-) : AutoMapper<Fr, To> {
+) : IAutoMapping<Fr, To> {
     private val objectCreator: ObjectCreator<Fr, To> = ObjectCreator(struct.targetType, struct.targetConstructor, struct.paramBinds, serviceContext.config)
 
     override fun transform(from: Fr): To {
         val target: To = objectCreator.createObject(from)
+        processAutoFields(from, target)
+        processManualFields(from, target)
+        return target
+    }
 
-        // ordinary (non-constructor) fields, auto mapped
+    override fun copyFields(from: Fr, to: To) {
+        processAutoFields(from, to)
+        processManualFields(from, to)
+    }
+
+    // ordinary (non-constructor) fields, auto mapped
+    private fun processAutoFields(from: Fr, target: To) {
         var i = -1
-        var size = struct.propAutoBinds.size
+        val size = struct.propAutoBinds.size
         while (++i < size) {
             val propMapper = struct.propAutoBinds[i]
             val valTo = propMapper.sourcePropRd.getValue(from)
             val valConv = propMapper.convNnFn.convertValNn(valTo)
             propMapper.targetPropWr.setValue(target, valConv)
         }
+    }
 
-        // ordinary (non-constructor) fields, manually mapped
-        i = -1
-        size = struct.propManualBinds.size
+    // ordinary (non-constructor) fields, manually mapped
+    private fun processManualFields(from: Fr, target: To) {
+        var i = -1
+        val size = struct.propManualBinds.size
         while (++i < size) {
             val mapr = struct.propManualBinds[i]
             val valTo = mapr.lambdaMapping.mapper(from)
             val valConv = mapr.lambdaMapping.convNnFn.convertValNn(valTo)
             mapr.targetPropWr.setValue(target, valConv)
         }
-        return target
     }
 }
 

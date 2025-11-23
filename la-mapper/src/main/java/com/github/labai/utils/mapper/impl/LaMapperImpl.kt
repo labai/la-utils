@@ -42,7 +42,7 @@ import kotlin.reflect.KType
  *
  * https://github.com/labai/la-utils/tree/main/la-mapper
  *
- * implementation
+ * implementation details
  */
 internal class LaMapperImpl(
     laConverterRegistry: IConverterResolver,
@@ -66,9 +66,11 @@ internal class LaMapperImpl(
         private val sourceType: KClass<Fr>,
         private val targetType: KClass<To>,
         private var manualMappings: Map<String, IMappingBuilderItem<Fr>> = mapOf(),
-    ) : AutoMapper<Fr, To> {
+        private val excludedFields: Set<String> = setOf(),
+        private val skipObjectCreation: Boolean = false,
+    ) : IAutoMapping<Fr, To> {
 
-        internal lateinit var activeMapper: AutoMapper<Fr, To>
+        internal lateinit var activeMapper: IAutoMapping<Fr, To>
             private set
         internal lateinit var struct: MappedStruct<Fr, To>
         private val isInitialized = AtomicBoolean(false)
@@ -86,6 +88,8 @@ internal class LaMapperImpl(
                             manualMappings.filter { it.value is PropMapping }.mapValues { it.value as PropMapping },
                             manualMappings.filter { it.value is LambdaMapping }.mapValues { it.value as LambdaMapping },
                             manualMappings.any { it.value is LambdaMapping && (it.value as LambdaMapping<Fr>).isClosure },
+                            excludedFields,
+                            skipObjectCreation,
                         )
                         activeMapper = ReflectionAutoMapper(struct, serviceContext)
                         manualMappings = mapOf() // cleanup
@@ -102,7 +106,7 @@ internal class LaMapperImpl(
                             ?: struct.propAutoBinds.firstOrNull { it.sourcePropRd.klass.isValue || it.targetPropWr.klass.isValue }
                             ?: struct.propManualBinds.firstOrNull { it.targetPropWr.klass.isValue }
                         try {
-                            activeMapper = if (hasValueClass != null || config.disableSyntheticConstructorCall || config.disableFullCompile) {
+                            activeMapper = if (skipObjectCreation || hasValueClass != null || config.disableSyntheticConstructorCall || config.disableFullCompile) {
                                 LaMapper.logger.trace("Use partial compile for $sourceType to $targetType mapper")
                                 laMapperAsmCompiler2.compiledMapper(struct)
                             } else {
@@ -123,6 +127,11 @@ internal class LaMapperImpl(
         override fun transform(from: Fr): To {
             init()
             return activeMapper.transform(from)
+        }
+
+        override fun copyFields(from: Fr, to: To) {
+            init()
+            activeMapper.copyFields(from, to)
         }
 
         internal fun hasClosure(): Boolean {
@@ -205,3 +214,9 @@ internal typealias ManualFn<Fr> = (Fr) -> Any?
 
 internal fun ConvFn?.convertValNn(v: Any?): Any? = if (this == null) v else this.convert(v)
 internal fun ConvFn?.convertValOrNull(v: Any?): Any? = if (v == null) null else (if (this == null) v else this.convert(v))
+
+interface IFieldCopier<Fr : Any, To : Any> {
+    fun copyFields(from: Fr, to: To)
+}
+
+interface IAutoMapping<Fr : Any, To : Any> : AutoMapper<Fr, To>, IFieldCopier<Fr, To>

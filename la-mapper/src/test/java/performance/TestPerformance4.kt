@@ -12,7 +12,8 @@ import org.junit.jupiter.api.Test
  * @author Augustus
  * created on 2025-05-03
  *
- * with records
+ * Records
+ *
  *  60 ms - manual create
  *  155 ms - full compile (default mapper)
  *  750 ms - part compile

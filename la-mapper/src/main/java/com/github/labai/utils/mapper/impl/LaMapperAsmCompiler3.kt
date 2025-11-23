@@ -26,7 +26,6 @@ package com.github.labai.utils.mapper.impl
 import com.github.labai.utils.hardreflect.LaHardCopy
 import com.github.labai.utils.hardreflect.LaHardCopy.PojoArgDef
 import com.github.labai.utils.hardreflect.LaHardCopy.PojoCopyPropDef
-import com.github.labai.utils.mapper.AutoMapper
 import com.github.labai.utils.mapper.impl.MappedStruct.ParamBind
 import com.github.labai.utils.mapper.impl.MappedStruct.PropAutoBind
 import com.github.labai.utils.mapper.impl.PropAccessUtils.toNameOrAccessor
@@ -53,10 +52,10 @@ import kotlin.reflect.KClass
 */
 internal class LaMapperAsmCompiler3(private val serviceContext: ServiceContext) {
 
-    internal interface Compiled3AutoMapper<Fr : Any, To : Any> : AutoMapper<Fr, To>
+    internal interface Compiled3AutoMapper<Fr : Any, To : Any> : IAutoMapping<Fr, To>
 
     @Suppress("UNCHECKED_CAST")
-    internal fun <Fr : Any, To : Any> compiledMapper(struct: MappedStruct<Fr, To>): AutoMapper<Fr, To> {
+    internal fun <Fr : Any, To : Any> compiledMapper(struct: MappedStruct<Fr, To>): IAutoMapping<Fr, To> {
         var synthConConf: SynthConConf<Fr, To>? = null
         if (struct.targetType.java.isRecord) {
             // all params are mandatory for record
@@ -107,6 +106,9 @@ internal class LaMapperAsmCompiler3(private val serviceContext: ServiceContext) 
         return object : Compiled3AutoMapper<Fr, To> {
             override fun transform(from: Fr): To {
                 return copier.copyPojo(from) as To
+            }
+            override fun copyFields(from: Fr, to: To) {
+                error("Should not use compile3 for copyFields")
             }
         }
     }
