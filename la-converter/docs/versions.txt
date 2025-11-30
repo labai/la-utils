@@ -1,3 +1,0 @@
-0.3.0 (2025-05)
-- java 17
-- fix record getter

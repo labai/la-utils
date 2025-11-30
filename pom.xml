@@ -15,10 +15,4 @@
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
-    <modules>
-        <!--<module>la-converter</module> -->
-        <!--<module>la-converter-shade</module>-->
-        <module>la-mapper</module>
-    </modules>
-
 </project>

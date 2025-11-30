@@ -1,10 +1,9 @@
 # la-utils
+Various small utils and helpers.
 
 ## la-mapper
-Data structures (dto's) mapper for kotlin.
-
-## la-converter
-Various data type converters (numeric, dates  etc).
+Data structures (dto's) mapper for kotlin. <br>
+Moved to [la-mapper](../../../deci/) repo.
 
 ## num2word
 Convert number to text phrase. 
