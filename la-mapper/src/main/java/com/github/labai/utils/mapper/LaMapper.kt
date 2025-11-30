@@ -96,6 +96,15 @@ class LaMapper(
             return global.copyFrom(from, Fr::class, To::class, mapping)
         }
 
+        fun <Fr : Any, To : Any> copyFrom(
+            from: Fr,
+            sourceType: KClass<Fr>,
+            targetType: KClass<To>,
+            mapping: (MappingBuilder<Fr, To>.() -> Unit)? = null,
+        ): To {
+            return global.copyFrom(from, sourceType, targetType, mapping)
+        }
+
         inline fun <reified Fr : Any, reified To : Any> copyFields(
             from: Fr,
             to: To,
@@ -292,6 +301,7 @@ class LaMapper(
 
         internal val excluded: MutableSet<String> = mutableSetOf()
 
+        /** list of field to exclude for copying */
         fun <F> exclude(vararg targetRefs: KCallable<F>?) {
             for (field in targetRefs) {
                 val toName = field?.name ?: error("mapper exclude param is null")

@@ -102,7 +102,7 @@ To include `la-mapper` in your project, add the following dependency:
 <dependency>
   <groupId>com.github.labai.utils</groupId>
   <artifactId>la-mapper</artifactId>
-  <version>0.2.3</version>
+  <version>0.3.1</version>
 </dependency>
 ```
 </details>
@@ -111,7 +111,7 @@ To include `la-mapper` in your project, add the following dependency:
 <summary><strong>Gradle (Kotlin DSL)</strong></summary>
 
 ```kotlin
-implementation("com.github.labai.utils:la-mapper:0.2.3")
+implementation("com.github.labai.utils:la-mapper:0.3.1")
 ```
 </details>
 
@@ -174,5 +174,4 @@ Special pseudo-variables are used here:
 - `t` - for accessing target ("to") class fields
 - `f` - for accessing source ("from") class fields
 
-NB: they are created for field references only and can't be used directly as object, 
-i.e. trying to write `t.code = f.personCode` would cause an error. 
+See more in [LaMapper](docs/usage.md) in wiki.

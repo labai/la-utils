@@ -1,3 +1,26 @@
+/*
+The MIT License (MIT)
+
+Copyright (c) 2022 Augustus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 import com.github.labai.utils.mapper.LaMapper
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -30,8 +53,8 @@ class LaMapperCopyFieldsTest {
 
     @Test
     fun test1_copyFields_withExclude() {
-        val fr = TestDto("a0-fr").apply { a1 = "a1-fr"; a2 = "a2-fr" }
-        val to = TestDto("a0-to").apply { a1 = "a1-to"; a2 = "a2-to" }
+        val (fr, to) = getTestDto()
+
         LaMapper.copyFields(fr, to) {
             exclude(t::a2)
         }
@@ -43,19 +66,20 @@ class LaMapperCopyFieldsTest {
     @ParameterizedTest
     @MethodSource(ENGINES)
     fun test2_copyFields_excludeList(engine: String) {
-        val fr = TestDto("a0-fr").apply { a1 = "a1-fr"; a2 = "a2-fr"; a3 = "a3-fr"; a4 = "a4-fr" }
-        val to = TestDto("a0-to").apply { a1 = "a1-to"; a2 = "a2-to"; a3 = "a3-to"; a4 = "a4-to" }
+        val (fr, to) = getTestDto()
 
         val mapper1 = MappersConfig.getFieldCopier<TestDto, TestDto>(engine) {
             exclude(t::a2, t::a3)
             exclude(t::a3)
             t::a2 from f::a0
+            t::a4 from f::a3
         }
         mapper1.copyFields(fr, to)
+        assertEquals("a0-to", to.a0)
         assertEquals("a1-fr", to.a1)
         assertEquals("a0-fr", to.a2)
         assertEquals("a3-to", to.a3)
-        assertEquals("a4-fr", to.a4)
+        assertEquals("a3-fr", to.a4)
     }
 
     @ParameterizedTest
@@ -129,5 +153,11 @@ class LaMapperCopyFieldsTest {
         assertEquals("a1-to", to.a1) // immutable
         assertEquals("a2-fr", to.a2)
         assertEquals("a3-fr", to.a3)
+    }
+
+    private fun getTestDto(): Pair<TestDto, TestDto> {
+        val fr = TestDto("a0-fr").apply { a1 = "a1-fr"; a2 = "a2-fr"; a3 = "a3-fr"; a4 = "a4-fr" }
+        val to = TestDto("a0-to").apply { a1 = "a1-to"; a2 = "a2-to"; a3 = "a3-to"; a4 = "a4-to" }
+        return Pair(fr, to)
     }
 }
