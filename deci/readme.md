@@ -1,5 +1,7 @@
 ## deci.kt
-deci.kt was moved to [deci](../../../../deci/) repo
+
+![#f03c15](https://placehold.co/10x15/f03c15/f03c15.png) 
+**deci.kt** was moved to **[deci](../../../../deci/)** repo
 
 ---
 
