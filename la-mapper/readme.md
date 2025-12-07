@@ -7,5 +7,5 @@
 It simplifies DTO transformation by allowing automatic field mapping and intuitive custom mappings,
 with support for basic type conversions.
 
-**[More...](../../../../la-mapper/config/docs/usage.md)**
+**[More...](../../../../la-mapper/blob/main/config/docs/usage.md)**
 
